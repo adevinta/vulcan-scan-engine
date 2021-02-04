@@ -1,0 +1,27 @@
+#!/bin/sh
+
+# Copyright 2021 Adevinta
+
+set -e
+
+echo "Building…"
+date "+%H:%M:%S"
+
+_script/setup
+
+echo "Running tests…"
+date "+%H:%M:%S"
+
+_script/test
+
+echo "Updating license cache…"
+date "+%H:%M:%S"
+
+licensed cache
+
+echo "Checking licenses…"
+date "+%H:%M:%S"
+
+licensed status
+
+date "+%H:%M:%S"

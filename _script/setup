@@ -1,0 +1,5 @@
+#!/bin/sh
+
+# Copyright 2021 Adevinta
+
+go get ./...

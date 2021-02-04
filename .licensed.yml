@@ -1,0 +1,33 @@
+name: 'Vulcan Scan Engine'
+sources:
+  go: true
+
+source_path: "{.*,**/*}"
+shared_cache: true
+
+ignored:
+  go:
+    - github.mpi-internal.com/**/*
+
+allowed:
+  - 0bsd
+  - apache-2.0
+  - bsd-2-clause
+  - bsd-3-clause
+  - isc
+  - mit
+  - wtfpl
+  - zlib
+
+reviewed:
+  go:
+    - golang.org/x/**/*
+    - github.com/gorilla/mux
+    - github.com/hashicorp/go-immutable-radix
+    - github.com/hashicorp/golang-lru/simplelru
+    - github.com/hashicorp/hcl
+    - github.com/hashicorp/hcl/**/*
+    - github.com/jmespath/go-jmespath
+    - github.com/magiconair/properties
+    - gopkg.in/ini.v1
+    - gopkg.in/yaml.v2
