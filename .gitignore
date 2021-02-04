@@ -1,0 +1,6 @@
+vendor/
+*.swp
+*.swo
+.DS_Store
+# Linux binary used in Dockerfile
+cmd/vulcan-scan-engine/vulcan-scan-engine

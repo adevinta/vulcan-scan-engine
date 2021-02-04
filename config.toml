@@ -1,0 +1,41 @@
+[log]
+# log levels all, debug, error, info, warn
+level ="$LOG_LEVEL"
+
+[server]
+port = $PORT
+
+[db]
+connection_string = "host=$PG_HOST port=$PG_PORT user=$PG_USER dbname=$PG_NAME password=$PG_PASSWORD sslmode=$PG_SSLMODE"
+migrations_subdir = ""
+
+[vulcan]
+schema = "http"
+host = "$PERSISTENCE_HOST"
+enable_async_creation = $ASYNC_CHECK_CREATION
+
+[sqs]
+disabled = false
+number_of_processors = 8
+log_messages = false
+polling_interval = 10
+wait_time = 20
+timeout = 30
+queue_arn = "$SQS_QUEUE_ARN"
+endpoint = "$AWS_SQS_ENDPOINT"
+
+[sns]
+topic_arn = "$SNS_TOPIC_ARN"
+enabled = true
+endpoint = "$AWS_SNS_ENDPOINT"
+
+[metrics]
+enabled = $DOGSTATSD_ENABLED
+
+[sns_checks]
+topic_arn = "$AWS_SNS_CHECKS_ARN"
+
+[check_creator]
+num_of_workers = $AWS_CHECK_CREATOR_WORKERS
+# in seconds.
+period =  $AWS_CHECK_CREATOR_PERIOD

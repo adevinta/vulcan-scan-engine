@@ -1,0 +1,22 @@
+# Copyright 2021 Adevinta
+
+# checks.yml
+- id: "c3b5af18-4e1d-11e8-9c2d-fa7ae01bbeaa"
+  parent_id : "c3b5af18-4e1d-11e8-9c2d-fa7ae01bbebc"
+  data: '{ "id": "c3b5af18-4e1d-11e8-9c2d-fa7ae01bbeaa", "status": "CREATED", "target": "localhost", "options": "{\"sleep_time\":6}","scan_id": "c3b5af18-4e1d-11e8-9c2d-fa7ae01bbebc","webhook": null, "progress": 0.0, "created_at": "2018-05-08T13:07:54.321Z","deleted_at": null,"queue_name": "aa","updated_at": "2018-05-08T13:07:54.321Z","checktype_id": "537473c5-f309-488f-a100-f524d4a739c9"}'
+
+- id: "c3b5afd8-4e1d-11d8-9c2d-fa7ae01bbeaa"
+  parent_id : "c3b5af18-4e1d-11e8-9c2d-fa7ae01bbebc"
+  data: '{ "id": "c3b5afd8-4e1d-11d8-9c2d-fa7ae01bbeaa", "status": "FINISHED", "target": "localhost", "options": "{\"sleep_time\":5}","scan_id": "c3b5af18-4e1d-11e8-9c2d-fa7ae01bbebc","webhook": null, "progress": 0.0, "created_at": "2018-05-08T13:07:54.321Z","deleted_at": null,"queue_name": "aa","updated_at": "2018-05-08T13:07:54.321Z","checktype_id": "537473c5-f309-488f-a100-f524d4a739c9"}'
+
+- id: "c3b5bfe8-4e1d-11d8-9c2d-fa7ae01bbeaa"
+  parent_id : "a3b5af18-4e1d-11e8-9c2d-fa7ae01bbebc"
+  data: '{ "status": "FINISHED", "target": "localhost"}'
+
+- id: "b3b5ca18-4e2d-22e8-9c2d-fa7ad01bbeba"
+  parent_id : "a3b5ca18-4e2d-22e8-9c2d-fa7ad01bbeba"
+  data: '{"status": "CREATED", "target": "localhost"}'
+
+- id: "a3b5ca18-4e2d-22e8-9c2d-fa7ad03bbfaa"
+  parent_id : "a3b5ca18-4e2d-22e8-9c2d-fa7ad01bbeba"
+  data: '{"status": "FINISHED", "target": "localhost"}'

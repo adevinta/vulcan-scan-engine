@@ -1,0 +1,291 @@
+# Copyright 2021 Adevinta
+
+swagger: "2.0"
+info:
+  description: Runs and monitors vulcan scans
+  version: 1.0.2
+  title: vulcan-scan-engine
+host: scanengine.vulcan.com
+basePath: /v1
+schemes:
+  - http
+  - https
+consumes:
+  - application/json
+produces:
+  - application/json
+paths:
+  /scans:
+    post:
+      tags:
+        - Scans
+      summary: ScansPost
+      description: Create a scan
+      operationId: ScansPost
+      consumes: []
+      produces:
+        - application/json
+      parameters:
+        - name: Accept
+          in: header
+          required: true
+          type: string
+        - name: Content-Type
+          in: header
+          required: true
+          type: string
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: "#/definitions/ScanCreationRequest"
+      responses:
+        "200":
+          description: Status 200
+          schema:
+            $ref: "#/definitions/CreateScanResponse"
+  "/scans/{scan_id}":
+    get:
+      tags:
+        - Scans
+      summary: Get a scan given an ID
+      description: A
+      operationId: ScanByIDGet
+      produces:
+        - application/json
+      parameters: []
+      responses:
+        "200":
+          description: ""
+          schema:
+            $ref: "#/definitions/GetScan"
+    parameters:
+      - name: scan_id
+        in: path
+        required: true
+        type: string
+  /scans/:
+    get:
+      tags:
+        - Scans
+      summary: Gets the scans with a given external_id value
+      description: Gets scans with a given external_id value
+      operationId: ScansByExternalID
+      produces:
+        - application/json
+      parameters:
+        - in: query
+          name: external_id
+          type: string
+          description: The external_id of the scans
+      responses:
+        "200":
+          description: ""
+          schema:
+            $ref: "#/definitions/GetScanByExternalID"
+  "/scans/{scan_id}/abort":
+    post:
+      tags:
+        - Scans
+      summary: Aborts a scan given an ID
+      description: ""
+      operationId: AbortScan
+      responses:
+        "202":
+          description: Scan correctly signaled to be aborted.
+        "409":
+          description: Error scan already signaled to be aborted.
+        "404":
+          description: Error scan not found
+    parameters:
+      - name: scan_id
+        in: path
+        required: true
+        type: string
+definitions:
+  ChecktypesGroups:
+    type: object
+    required:
+      - checktypes
+      - name
+    properties:
+      name:
+        type: string
+        description: ""
+        example: OneGroup
+      checktypes:
+        type: array
+        description: ""
+        items:
+          $ref: "#/definitions/Checktype"
+        example:
+          - options: '{"port":"8080"}'
+            name: vulcan-dkim-experimental
+    example:
+      name: OneGroup
+      checktypes:
+        - options: '{"port":"8080"}'
+          name: vulcan-dkim-experimental
+  Checktype:
+    type: object
+    required:
+      - name
+      - options
+    properties:
+      options:
+        type: string
+        description: ""
+        example: '{"port":"8080"}'
+      name:
+        type: string
+        description: ""
+        example: vulcan-dkim-experimental
+    example:
+      options: '{"port":"8080"}'
+      name: vulcan-dkim-experimental
+  ScanCreationRequest:
+    type: object
+    required:
+      - target_groups
+      - trigger
+    properties:
+      trigger:
+        type: string
+        description: ""
+        example: Daily Pre Scan
+      tag:
+        type: string
+        description: ""
+        example: "sdr:one:team"
+      external_id:
+        type: string
+        description: ""
+        example: id1
+      target_groups:
+        $ref: "#/definitions/TargetGroups"
+  TargetGroups:
+    type: array
+    items:
+      $ref: "#/definitions/TargetGroupsDef"
+  TargetGroupsDef:
+    type: object
+    required:
+      - target_group
+      - checktypes_group
+    properties:
+      target_group:
+        $ref: "#/definitions/TargetGroup"
+      checktypes_group:
+        $ref: "#/definitions/ChecktypesGroups"
+
+  TargetGroup:
+    type: object
+    required:
+      - name
+      - options
+      - targets
+    properties:
+      name:
+        type: string
+        description: ""
+        example: OneGroup
+      options:
+        type: string
+        description: ""
+        example: '{"port":"8080"}'
+      targets:
+        type: array
+        description: ""
+        items:
+          $ref: "#/definitions/Target"
+        example:
+          - options: '{"port":"8180"}'
+            identifier: adevinta.com
+    example:
+      name: OneGroup
+      options: '{"port":"8080"}'
+      targets:
+        - options: '{"port":"8180"}'
+          identifier: adevinta.com
+  Target:
+    type: object
+    required:
+      - type
+      - identifier
+      - options
+    properties:
+      options:
+        type: string
+        description: ""
+        example: '{"port":"8180"}'
+      identifier:
+        type: string
+        description: ""
+        example: adevinta.com
+      type:
+        type: string
+        example: "Hostname"
+    example:
+      options: '{"port":"8180"}'
+      identifier: adevinta.com
+  GetScan:
+    type: object
+    required:
+      - ID
+      - StartTime
+      - Status
+      - Trigger
+    properties:
+      id:
+        type: string
+        description: ""
+        example: 30d784a3-6ec1-4f22-adf4-0d24fed45623
+      external_id:
+        type: string
+        description: ""
+        example: extid1
+      status:
+        type: string
+        description: ""
+        example: RUNNING
+      trigger:
+        type: string
+        description: ""
+        example: Daily Pre Scan
+      scheduled_time:
+        type: string
+        format: date-time
+        description: ""
+        example: "5/19/2018 6:11:05 PM"
+      start_time:
+        type: string
+        format: date-time
+        description: ""
+        example: "5/19/2018 6:11:05 PM"
+      end_time:
+        type: string
+        format: date-time
+        description: ""
+      progress:
+        type: number
+        format: double
+        description: ""
+        example: 0.33
+      check_count:
+        type: integer
+        description: "number of checks in the scan"
+  CreateScanResponse:
+    type: object
+    required:
+      - scan_id
+    properties:
+      scan_id:
+        type: string
+    example: '{"scan_id":"8eafa7b8-2650-446c-bfc5-970d101eace1"}'
+  GetScanByExternalID:
+    type: object
+    properties:
+      scans:
+        type: array
+        items:
+          $ref: "#/definitions/GetScan"

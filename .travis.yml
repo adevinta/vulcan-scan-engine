@@ -1,0 +1,17 @@
+dist: bionic
+language: go
+go:
+  - 1.13.3
+services:
+  - docker
+before_script:
+  - docker pull boxfuse/flyway
+  - export GOROOT=$(go env GOROOT)
+  - db/postgres-start.sh
+go_import_path: github.com/adevinta/vulcan-scan-engine
+script:
+  - go install -v $(go list ./... | grep -v /vendor/)
+  - go test -short -v $(go list ./... | grep -v /vendor/)
+  - cd cmd/vulcan-scan-engine && go build && cd ../..
+after_success:
+  - bash -c 'source <(curl -s https://raw.githubusercontent.com/adevinta/vulcan-cicd/master/docker.sh)'

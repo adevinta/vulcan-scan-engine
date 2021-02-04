@@ -1,0 +1,39 @@
+[log]
+# log levels all, debug, error, info, warn
+level ="debug"
+
+[server]
+port = 8081
+
+[db]
+connection_string = "port=5434 user=vulcan password=vulcan sslmode=disable dbname=scan-enginedb"
+migrations_subdir ="db"
+
+[vulcan]
+schema = "https"
+host = "persistence.vulcan.com"
+enable_async_creation = true
+
+[sqs]
+disabled = false
+number_of_processors = 1
+log_messages = false
+polling_interval = 10
+wait_time = 20
+timeout = 30
+queue_arn = "arn:aws:sqs::xxx:123456789012:yyy"
+endpoint = ""
+
+[sns]
+topic_arn = "arn:aws:sns::xxx:123456789012:yyy"
+enabled = "false"
+
+[sns_checks]
+# topic_arn = "arn:aws:sns::xxx:123456789012:yyy"
+topic_arn = "arn:aws:sns::xxx:123456789012:yyy"
+enabled = true
+
+[check_creator]
+num_of_workers = 1
+# in seconds.
+period = 60
