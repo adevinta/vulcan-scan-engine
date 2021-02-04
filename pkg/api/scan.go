@@ -10,6 +10,19 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
+var (
+	CheckStateCreated      = "CREATED"
+	CheckStateQueued       = "QUEUED"
+	CheckStateAssingned    = "ASSIGNED"
+	CheckStateRunning      = "RUNNING"
+	CheckStatePurging      = "PURGING"
+	CheckStateMalformed    = "MALFORMED"
+	CheckStateKilled       = "KILLED"
+	CheckStateFailed       = "FAILED"
+	CheckStateFinished     = "FINISHED"
+	CheckStateInconclusive = "INCONCLUSIVE"
+)
+
 // Scan holds all the data related to a scan.
 type Scan struct {
 	ID              uuid.UUID                 `json:"id,omitempty"`
@@ -73,12 +86,28 @@ type Checktype struct {
 
 // Check holds all the information this service needs to process regarding a check.
 type Check struct {
-	ID        string   `json:"id" validate:"required"`
-	Status    string   `json:"status" validate:"required"`
-	ScanID    string   `json:"scan_id" validate:"required"`
-	Progress  *float32 `json:"progress,omitempty"`
-	ScanIndex *string  `json:"scan_index,omitempty"`
-	Data      []byte   `json:"-"`
+	ID            string             `json:"id" validate:"required"`
+	Status        string             `json:"status" validate:"required"`
+	ScanID        string             `json:"scan_id" validate:"required"`
+	Target        string             `json:"target" validate:"required"`
+	Progress      *float32           `json:"progress,omitempty"`
+	ScanIndex     *string            `json:"scan_index,omitempty"`
+	AgentID       *string            `json:"agent_id,omitempty"`
+	ChecktypeID   *string            `json:"checktype_id,omitempty"`
+	ChecktypeName *string            `json:"checktype_name,omitempty"`
+	Image         *string            `json:"image,omitempty"`
+	Options       *string            `json:"options,omitempty"`
+	WebHook       *string            `json:"webhook,omitempty"`
+	Report        *string            `json:"report,omitempty"`
+	Raw           *string            `json:"raw,omitempty"`
+	QueueName     *string            `json:"queue_name,omitempty"`
+	Tag           *string            `json:"tag,omitempty"`
+	Assettype     *string            `json:"assettype,omitempty"`
+	Metadata      *map[string]string `json:"metadata,omitempty"`
+	RequiredVars  *[]string          `json:"required_vars,omitempty"`
+	StartTime     *time.Time         `json:"start_time,omitempty"`
+	Timeout       *int               `json:"timeout,omitempty"`
+	Data          []byte             `json:"-"`
 }
 
 // ScanNotification represents the data of a scan sent to the SNS topic.

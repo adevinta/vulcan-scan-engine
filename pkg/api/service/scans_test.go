@@ -6,20 +6,14 @@ package service
 
 import (
 	"context"
-	"encoding/json"
-	"io/ioutil"
 	"net/http"
-	"net/http/httptest"
-	"net/url"
 	"os"
 	"reflect"
-	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/go-kit/kit/log"
-	goauuid "github.com/goadesign/goa/uuid"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	uuid "github.com/satori/go.uuid"
@@ -31,11 +25,9 @@ import (
 )
 
 var (
-	baseModelFieldNames = []string{"StartTime"}
-	ignoreFieldsScan    = cmpopts.IgnoreFields(api.Scan{}, baseModelFieldNames...)
-	statusRUNNING       = "RUNNING"
-	ErrDocDoesNotExist  = errors.NotFound("Document does not exists")
-	assettypes          = client.AssettypeCollection{
+	statusRUNNING      = "RUNNING"
+	ErrDocDoesNotExist = errors.NotFound("Document does not exists")
+	assettypes         = client.AssettypeCollection{
 		&client.Assettype{
 			Assettype: nil,
 			Name: []string{
@@ -60,51 +52,7 @@ var (
 			Name:      []string{"vulcan-exposed-amt"},
 		},
 	}
-
-	testCheckCreator = CheckCreator{
-		assettypeInformer: &inMemoryAssettypeInformer{
-			assetypes: assettypes,
-		},
-	}
 )
-
-func Test_mergeOptions(t *testing.T) {
-	type args struct {
-		optsA map[string]interface{}
-		optsB map[string]interface{}
-	}
-	tests := []struct {
-		name string
-		args args
-		want map[string]interface{}
-	}{
-		{
-			name: "MergesNonIntersectingOptions",
-			args: args{
-				optsA: map[string]interface{}{"a": "value1"},
-				optsB: map[string]interface{}{"b": 2},
-			},
-			want: map[string]interface{}{"a": "value1", "b": 2},
-		},
-		{
-			name: "OverridesIntersectingOptions",
-			args: args{
-				optsA: map[string]interface{}{"a": "value1"},
-				optsB: map[string]interface{}{"a": "value2", "c": "value3"},
-			},
-			want: map[string]interface{}{"a": "value2", "c": "value3"},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := mergeOptions(tt.args.optsA, tt.args.optsB)
-			diff := cmp.Diff(got, tt.want)
-			if diff != "" {
-				t.Errorf("Error got!=want. Diff:\n %s", diff)
-			}
-		})
-	}
-}
 
 type fakeScansPersistence struct {
 	ScanCreator             func(uuid.UUID, api.Scan) (int64, error)
@@ -153,95 +101,16 @@ func (f fakeScansPersistence) DeleteScanChecks(scanID uuid.UUID) error {
 	return f.ScanChecksRemover(scanID)
 }
 
-type fakeVulcanCoreAPI struct {
-	FileScanUploader func(context.Context, string, *client.FileScanPayload) (*http.Response, error)
-	ScanAborter      func(ctx context.Context, path string) (*http.Response, error)
-	ScanDecoder      func(resp *http.Response) (*client.Scan, error)
-	AssetTypeIndexer func(ctx context.Context, path string) (*http.Response, error)
-	AssettypeDecoder func(resp *http.Response) (client.AssettypeCollection, error)
+type inMemoryAssettypeInformer struct {
+	assetypes client.AssettypeCollection
 }
 
-func (f fakeVulcanCoreAPI) UploadFileScans(ctx context.Context, path string, payload *client.FileScanPayload) (*http.Response, error) {
-	return f.FileScanUploader(ctx, path, payload)
+func (i *inMemoryAssettypeInformer) IndexAssettypes(ctx context.Context, path string) (*http.Response, error) {
+	return nil, nil
 }
 
-func (f fakeVulcanCoreAPI) AbortScans(ctx context.Context, path string) (*http.Response, error) {
-	return f.ScanAborter(ctx, path)
-}
-
-func (f fakeVulcanCoreAPI) DecodeScan(resp *http.Response) (*client.Scan, error) {
-	return f.ScanDecoder(resp)
-}
-
-func (f fakeVulcanCoreAPI) IndexAssettypes(ctx context.Context, path string) (*http.Response, error) {
-	return f.AssetTypeIndexer(ctx, path)
-}
-func (f fakeVulcanCoreAPI) DecodeAssettypeCollection(resp *http.Response) (client.AssettypeCollection, error) {
-	return f.AssettypeDecoder(resp)
-}
-
-type fixedIDVulcanCoreAPI struct {
-	scans *sync.Map
-	fakeVulcanCoreAPI
-}
-
-func newFixedIDVulcanCoreAPI(id string, scans *sync.Map, at AssettypeInformer) fixedIDVulcanCoreAPI {
-	api := fixedIDVulcanCoreAPI{
-		scans: scans,
-		fakeVulcanCoreAPI: fakeVulcanCoreAPI{
-			FileScanUploader: func(ctx context.Context, path string, payLoad *client.FileScanPayload) (*http.Response, error) {
-				content, err := ioutil.ReadFile(payLoad.Upload)
-				if err != nil {
-					return nil, err
-				}
-				scan := client.ScanPayload{}
-				err = json.Unmarshal(content, &scan)
-				if err != nil {
-					return nil, err
-				}
-				id, err := goauuid.FromString(id)
-				if err != nil {
-					return nil, err
-				}
-				scans.Store(id, scan)
-				data := client.Scandata{
-					ID:   id,
-					Size: len(scan.Scan.Checks),
-				}
-				ret := client.Scan{
-					Scan: &data,
-				}
-				content, err = json.Marshal(ret)
-				if err != nil {
-					return nil, err
-				}
-				recorder := httptest.NewRecorder()
-				recorder.WriteHeader(http.StatusCreated)
-				recorder.WriteString(string(content))
-
-				return recorder.Result(), nil
-			},
-			ScanDecoder: func(resp *http.Response) (*client.Scan, error) {
-				content, err := ioutil.ReadAll(resp.Body)
-				if err != nil {
-					return nil, err
-				}
-				scan := client.Scan{}
-				err = json.Unmarshal(content, &scan)
-				if err != nil {
-					return nil, err
-				}
-				return &scan, err
-			},
-			AssetTypeIndexer: func(ctx context.Context, path string) (*http.Response, error) {
-				return at.IndexAssettypes(ctx, path)
-			},
-			AssettypeDecoder: func(resp *http.Response) (client.AssettypeCollection, error) {
-				return at.DecodeAssettypeCollection(resp)
-			},
-		},
-	}
-	return api
+func (i *inMemoryAssettypeInformer) DecodeAssettypeCollection(resp *http.Response) (client.AssettypeCollection, error) {
+	return i.assetypes, nil
 }
 
 type inMemoryStore struct {
@@ -313,14 +182,28 @@ type mockMetricsClient struct {
 func (mc *mockMetricsClient) Push(m metrics.Metric)              {}
 func (mc *mockMetricsClient) PushWithRate(m metrics.RatedMetric) {}
 
+type inMemAsyncCheckCreator struct {
+	ScanIDs []string
+	created chan struct{}
+}
+
+func (i *inMemAsyncCheckCreator) CreateScanChecks(id string) error {
+	if i.ScanIDs == nil {
+		i.ScanIDs = []string{}
+	}
+	i.ScanIDs = append(i.ScanIDs, id)
+	i.created <- struct{}{}
+	return nil
+}
+
 func TestScansService_CreateScan(t *testing.T) {
 	date := time.Date(2019, time.March, 4, 10, 0, 0, 0, time.UTC)
 	type fields struct {
-		db            inMemoryStore
-		logger        log.Logger
-		vulcanCore    CoreAPI
-		ccreator      CheckCreator
-		metricsClient metrics.Client
+		db                 inMemoryStore
+		logger             log.Logger
+		checktypesInformer ChecktypesInformer
+		checksCreator      *inMemAsyncCheckCreator
+		metricsClient      metrics.Client
 	}
 	type args struct {
 		ctx  context.Context
@@ -335,72 +218,40 @@ func TestScansService_CreateScan(t *testing.T) {
 		wantErr  bool
 	}{
 		{
-			name: "CreateAndStoreNewScan",
+			name: "CreateAndStoreScans",
 			fields: fields{
 				db:            newInMemoryStore(new(sync.Map)),
 				logger:        log.NewLogfmtLogger(os.Stdout),
-				vulcanCore:    newFixedIDVulcanCoreAPI("b3b5af18-4e1d-11e8-9c2d-fa7ae01bbebd", new(sync.Map), &inMemoryAssettypeInformer{}),
 				metricsClient: &mockMetricsClient{},
-			},
-			args: args{
-				ctx: context.Background(),
-				scan: &api.Scan{
-					ChecktypesGroup: &api.ChecktypesGroup{
-						Name: "OneGroup",
-						Checktypes: []api.Checktype{
-							{
-								Name:    "onecheck",
-								Options: `{"port":"8080"}`,
+				checksCreator: &inMemAsyncCheckCreator{
+					created: make(chan struct{}, 1),
+				},
+				checktypesInformer: &inMemoryAssettypeInformer{
+					assetypes: client.AssettypeCollection{
+						&client.Assettype{
+							Assettype: nil,
+							Name: []string{
+								"vulcan-no-exec",
 							},
 						},
-					},
-					Targets: &api.TargetGroup{
-						Name: "OneGroup",
-						Targets: []api.Target{
-							{Identifier: "localhost"},
+						&client.Assettype{
+							Assettype: strToPtr("Hostname"),
+							Name: []string{
+								"vulcan-nessus",
+							},
+						},
+						&client.Assettype{
+							Assettype: strToPtr("DomainName"),
+							Name: []string{
+								"vulcan-spf",
+							},
+						},
+						&client.Assettype{
+							Assettype: strToPtr("IP"),
+							Name:      []string{},
 						},
 					},
 				},
-			},
-			want: func() uuid.UUID {
-				id, _ := uuid.FromString("b3b5af18-4e1d-11e8-9c2d-fa7ae01bbebd")
-				return id
-			}(),
-			wantScan: &api.Scan{
-				ID: func() uuid.UUID {
-					id, _ := uuid.FromString("b3b5af18-4e1d-11e8-9c2d-fa7ae01bbebd")
-					return id
-				}(),
-				ChecktypesGroup: &api.ChecktypesGroup{
-					Name: "OneGroup",
-					Checktypes: []api.Checktype{
-						{
-							Name:    "onecheck",
-							Options: `{"port":"8080"}`,
-						},
-					},
-				},
-				Status: &statusRUNNING,
-				Targets: &api.TargetGroup{
-					Name: "OneGroup",
-					Targets: []api.Target{
-						{Identifier: "localhost"},
-					},
-				},
-				CheckCount: intToPtr(1),
-			},
-		},
-
-		{
-			name: "UseMultipleTargetGroups",
-			fields: fields{
-				db:     newInMemoryStore(new(sync.Map)),
-				logger: log.NewLogfmtLogger(os.Stdout),
-				vulcanCore: newFixedIDVulcanCoreAPI("b3b5af18-4e1d-11e8-9c2d-fa7ae01bbebe", new(sync.Map), &inMemoryAssettypeInformer{
-					assetypes: assettypes,
-				}),
-				ccreator:      testCheckCreator,
-				metricsClient: &mockMetricsClient{},
 			},
 			args: args{
 				ctx: context.Background(),
@@ -482,8 +333,10 @@ func TestScansService_CreateScan(t *testing.T) {
 						},
 					},
 				},
-				Status:     &statusRUNNING,
-				CheckCount: intToPtr(2),
+				Status:         &statusRUNNING,
+				CheckCount:     intToPtr(1),
+				ChecksCreated:  intToPtr(0),
+				ChecktypesInfo: map[string]map[string]struct{}{"DomainName": {"vulcan-spf": {}}, "Hostname": {"vulcan-nessus": {}}, "IP": {}},
 			},
 		},
 	}
@@ -492,8 +345,8 @@ func TestScansService_CreateScan(t *testing.T) {
 			s := ScansService{
 				db:            tt.fields.db,
 				logger:        tt.fields.logger,
-				vulcanCore:    tt.fields.vulcanCore,
-				ccreator:      &tt.fields.ccreator,
+				accreator:     tt.fields.checksCreator,
+				ctInformer:    tt.fields.checktypesInformer,
 				metricsClient: tt.fields.metricsClient,
 			}
 			got, err := s.CreateScan(tt.args.ctx, tt.args.scan)
@@ -502,12 +355,12 @@ func TestScansService_CreateScan(t *testing.T) {
 				return
 			}
 
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("ScansService.CreateScan() = %v, want %v", got, tt.want)
-				return
-			}
-
 			if tt.wantScan != nil {
+				// If an in memory asynchronous check creator is specified we
+				// read from the channel to be sure it finished.
+				if tt.fields.checksCreator != nil {
+					<-tt.fields.checksCreator.created
+				}
 				val, ok := tt.fields.db.scans.Load(got)
 				if !ok {
 					t.Error("Expected scan not stored in db.")
@@ -518,7 +371,11 @@ func TestScansService_CreateScan(t *testing.T) {
 					t.Error("Got scan not found")
 					return
 				}
-				diff := cmp.Diff(gotScan, *tt.wantScan, ignoreFieldsScan)
+				if gotScan.ID.String() != got.String() {
+					t.Errorf("gotScanID != storedScanID %s, %s", gotScan.ID.String(), got.String())
+				}
+
+				diff := cmp.Diff(gotScan, *tt.wantScan, cmpopts.IgnoreFields(api.Scan{}, "ID", "StartTime"))
 				if diff != "" {
 					t.Errorf("gotScan != wantScan.diff %v", diff)
 				}
@@ -532,7 +389,6 @@ func TestScansService_AbortScan(t *testing.T) {
 	type fields struct {
 		storeCreator func() ScansPersistence
 		logger       log.Logger
-		vulcanCore   CoreAPI
 	}
 	type args struct {
 		ctx    context.Context
@@ -545,7 +401,7 @@ func TestScansService_AbortScan(t *testing.T) {
 		wantErr error
 	}{
 		{
-			name: "CallsCoreToAbortAGivenScan",
+			name: "PushMessageToAbort",
 			fields: fields{
 				storeCreator: func() ScansPersistence {
 					scans := new(sync.Map)
@@ -556,29 +412,12 @@ func TestScansService_AbortScan(t *testing.T) {
 					return newInMemoryStore(scans)
 				},
 				logger: log.NewLogfmtLogger(os.Stdout),
-				vulcanCore: fakeVulcanCoreAPI{
-					ScanAborter: func(ctx context.Context, path string) (*http.Response, error) {
-						u, err := url.Parse(path)
-						if err != nil {
-							return nil, err
-						}
-						parts := strings.Split(u.Path, "/")
-						correct := len(parts) == 5 && parts[2] == "scans" &&
-							parts[3] == "b3b5af18-4e1d-11e8-9c2d-fa7ae01bbebd" &&
-							parts[4] == "abort"
-						recorder := httptest.NewRecorder()
-						if correct {
-							recorder.WriteHeader(http.StatusAccepted)
-							return recorder.Result(), nil
-						}
-						return nil, errors.Default("unexpected path ")
-					},
-				},
 			},
 			args: args{
 				ctx:    context.Background(),
 				scanID: "b3b5af18-4e1d-11e8-9c2d-fa7ae01bbebd",
 			},
+			wantErr: ErrNotImplemented,
 		},
 		{
 			name: "ReturnsNotFoundIfScanDoesNotExist",
@@ -586,8 +425,7 @@ func TestScansService_AbortScan(t *testing.T) {
 				storeCreator: func() ScansPersistence {
 					return newInMemoryStore(new(sync.Map))
 				},
-				logger:     log.NewLogfmtLogger(os.Stdout),
-				vulcanCore: fakeVulcanCoreAPI{},
+				logger: log.NewLogfmtLogger(os.Stdout),
 			},
 			args: args{
 				ctx:    context.Background(),
@@ -600,9 +438,8 @@ func TestScansService_AbortScan(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := ScansService{
-				db:         tt.fields.storeCreator(),
-				logger:     tt.fields.logger,
-				vulcanCore: tt.fields.vulcanCore,
+				db:     tt.fields.storeCreator(),
+				logger: tt.fields.logger,
 			}
 			err := s.AbortScan(tt.args.ctx, tt.args.scanID)
 			if errorToStr(err) != errorToStr(tt.wantErr) {
@@ -612,6 +449,7 @@ func TestScansService_AbortScan(t *testing.T) {
 		})
 	}
 }
+
 func Test_states_LessOrEqual(t *testing.T) {
 	type args struct {
 		s string
@@ -738,4 +576,8 @@ func Test_statusFromChecks(t *testing.T) {
 			}
 		})
 	}
+}
+
+func strToPtr(input string) *string {
+	return &input
 }

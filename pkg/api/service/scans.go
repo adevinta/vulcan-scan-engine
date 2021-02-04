@@ -8,9 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
-	"os"
 	"sort"
 	"strings"
 	"time"
@@ -18,11 +16,11 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 
-	uuid2 "github.com/goadesign/goa/uuid"
 	uuid "github.com/satori/go.uuid"
 	validator "gopkg.in/go-playground/validator.v9"
 
 	"github.com/adevinta/errors"
+
 	"github.com/adevinta/vulcan-core-cli/vulcan-core/client"
 	metrics "github.com/adevinta/vulcan-metrics-client"
 	"github.com/adevinta/vulcan-scan-engine/pkg/api"
@@ -112,10 +110,7 @@ type ScansPersistence interface {
 	DeleteScanChecks(scanID uuid.UUID) error
 }
 
-type CoreAPI interface {
-	UploadFileScans(ctx context.Context, path string, payload *client.FileScanPayload) (*http.Response, error)
-	DecodeScan(resp *http.Response) (*client.Scan, error)
-	AbortScans(ctx context.Context, path string) (*http.Response, error)
+type ChecktypesInformer interface {
 	IndexAssettypes(ctx context.Context, path string) (*http.Response, error)
 	DecodeAssettypeCollection(resp *http.Response) (client.AssettypeCollection, error)
 }
@@ -136,27 +131,26 @@ type scanStats struct {
 	NumberOfChecksPerChecktype map[string]int
 }
 
+// ChecktypesByAssettypes is used as a lookup table to check if a checktype can
+// be run against a concrete assettype.
+type ChecktypesByAssettypes map[string]map[string]struct{}
+
 // ScansService implements the functionality needed to create and query scans.
 type ScansService struct {
 	db            ScansPersistence
 	logger        log.Logger
-	vulcanCore    CoreAPI
-	notifier      ScanNotifier
-	ccreator      *CheckCreator
+	ctInformer    ChecktypesInformer
 	metricsClient metrics.Client
 	accreator     AsyncChecksCreator
 }
 
 // New Creates and returns ScansService with all the dependencies wired in.
-func New(logger log.Logger, db ScansPersistence, client CoreAPI, notifier ScanNotifier,
+func New(logger log.Logger, db ScansPersistence, client ChecktypesInformer,
 	metricsClient metrics.Client, accreator AsyncChecksCreator) ScansService {
-	creator := &CheckCreator{assettypeInformer: client}
 	return ScansService{
 		db:            db,
 		logger:        logger,
-		vulcanCore:    client,
-		notifier:      notifier,
-		ccreator:      creator,
+		ctInformer:    client,
 		accreator:     accreator,
 		metricsClient: metricsClient,
 	}
@@ -186,22 +180,9 @@ func (s ScansService) AbortScan(ctx context.Context, strID string) error {
 	if err != nil {
 		return err
 	}
-	// The goa generated method AbortScansPath only accept goa uuid.
-	goaUUID, _ := uuid2.FromString(strID)
-	resp, err := s.vulcanCore.AbortScans(ctx, client.AbortScansPath(goaUUID))
-	if err != nil {
-		return errors.Default(fmt.Sprintf("can not abort scan %s in vulcan core: %v", strID, err))
-	}
-	switch resp.StatusCode {
-	case http.StatusAccepted:
-		return nil
-	case http.StatusNotFound:
-		return errors.NotFound(fmt.Sprintf("can not abort scan %s in vulcan core", strID))
-	case http.StatusConflict:
-		return errors.Duplicated(fmt.Sprintf("scan %s has already been marked as aborted", strID))
-	default:
-		return errors.Default(fmt.Sprintf("can not abort scan %s in vulcan core. Status code %d", strID, resp.StatusCode))
-	}
+	// send a notification for canceling the checks of the scan through the stream.
+	// stream.Notify(checks(scan))
+	return ErrNotImplemented
 }
 
 // GetScansByExternalID returns the scans that have the same external ids.
@@ -217,7 +198,7 @@ func (s ScansService) GetScansByExternalID(ctx context.Context, ID string, all b
 	return scans, nil
 }
 
-func (s ScansService) CreateScanChecksAsync(ctx context.Context, scan *api.Scan) (uuid.UUID, error) {
+func (s ScansService) CreateScan(ctx context.Context, scan *api.Scan) (uuid.UUID, error) {
 	if scan == nil {
 		return uuid.Nil, errors.Default("unexpected nil value creating a scan")
 	}
@@ -292,11 +273,11 @@ func (s ScansService) getScanStats(ctx context.Context, checktypesInfo Checktype
 }
 
 func (s ScansService) checktypesByAssettype(ctx context.Context) (ChecktypesByAssettypes, error) {
-	resp, err := s.vulcanCore.IndexAssettypes(ctx, client.IndexAssettypesPath())
+	resp, err := s.ctInformer.IndexAssettypes(ctx, client.IndexAssettypesPath())
 	if err != nil {
 		return nil, err
 	}
-	assettypes, err := s.vulcanCore.DecodeAssettypeCollection(resp)
+	assettypes, err := s.ctInformer.DecodeAssettypeCollection(resp)
 	if err != nil {
 		return nil, err
 	}
@@ -313,128 +294,6 @@ func (s ScansService) checktypesByAssettype(ctx context.Context) (ChecktypesByAs
 		}
 	}
 	return ret, nil
-}
-
-func (s ScansService) Create(ctx context.Context, scan *api.Scan) (uuid.UUID, error) {
-	// Store scan
-	now := time.Now()
-	scan.StartTime = &now
-	id, err := uuid.NewV4()
-	if err != nil {
-		return uuid.Nil, err
-	}
-	scan.ID = id
-	status := ScanStatusRunning
-	scan.Status = &status
-	_, err = s.db.CreateScan(id, *scan)
-	if err != nil {
-		return uuid.Nil, err
-	}
-	_ = level.Warn(s.logger).Log("ScanCreated", id)
-	return id, nil
-}
-
-// CreateScan creates a new scan by calling the vulcan-core api and stores
-// all the data regarding the scan in the local database.
-func (s ScansService) CreateScan(ctx context.Context, scan *api.Scan) (uuid.UUID, error) {
-	var (
-		checksPayload []*client.CheckPayload
-		err           error
-	)
-	if scan == nil {
-		return uuid.Nil, errors.Default("unexpected nil in scan parameter")
-	}
-	// TODO: Remove this "if". It's here to maintain backward compatibility
-	// with the old format of the scan where only one asset group and policy
-	// was allowed to be created.
-	if scan.TargetGroups != nil {
-		checksPayload, err = s.ccreator.CreateScanChecks(ctx, *scan)
-	} else {
-		checksPayload, err = createScanChecks(*scan)
-	}
-	if err != nil {
-		return uuid.Nil, err
-	}
-	scanPayload := client.ScanPayload{
-		Scan: &client.ScanChecksPayload{
-			Checks: checksPayload,
-		},
-	}
-	if len(scanPayload.Scan.Checks) < 1 {
-		return uuid.Nil, errors.Validation("at least one target and checktype needed")
-	}
-	content, err := json.Marshal(&scanPayload)
-	if err != nil {
-		return uuid.Nil, errors.Default(fmt.Sprintf("can not marshal scan payload: %v", err))
-	}
-
-	file, err := ioutil.TempFile("", "scan_")
-	if err != nil {
-		return uuid.Nil, errors.Default(fmt.Sprintf("can not create temp file: %v", err))
-	}
-	defer file.Close() //nolint
-	if _, err = file.Write(content); err != nil {
-		return uuid.Nil, errors.Default(fmt.Sprintf("can not write to file: %v", err))
-	}
-	defer os.Remove(file.Name()) //nolint
-
-	filePayload := client.FileScanPayload{
-		Upload:    file.Name(),
-		ProgramID: scan.ExternalID,
-		Tag:       scan.Tag,
-	}
-
-	resp, err := s.vulcanCore.UploadFileScans(ctx, client.UploadFileScansPath(), &filePayload)
-	if err != nil {
-		return uuid.Nil, errors.Default(fmt.Sprintf("can not create scan in vulcan core: %v", err))
-	}
-	defer resp.Body.Close() //nolint
-
-	if resp.StatusCode != http.StatusCreated {
-		return uuid.Nil, errors.Default(fmt.Sprintf("can not create scan in vulcan core. Status code: %d", resp.StatusCode))
-	}
-
-	scanResponse, err := s.vulcanCore.DecodeScan(resp)
-	if err != nil {
-		return uuid.Nil, errors.Default(fmt.Sprintf("can not decode scan: %+v", err))
-	}
-	// Ensure scan data
-	if scanResponse.Scan == nil {
-		return uuid.Nil, errors.Default("empty scan data received when creating a scan in vulcan-core")
-	}
-	id, err := uuid.FromString(scanResponse.Scan.ID.String())
-	if err != nil {
-		return uuid.Nil, errors.Default(fmt.Sprintf("invalid scan ID generated by vulcan core: %v", err))
-	}
-
-	ctypesInfo, err := s.checktypesByAssettype(ctx)
-	if err != nil {
-		return uuid.Nil, err
-	}
-	stats, err := s.getScanStats(ctx, ctypesInfo, scan)
-	if err != nil {
-		return uuid.Nil, err
-	}
-
-	// Push metrics
-	s.pushScanMetrics(metricsScanCreated, ptr2Str(scan.Tag), ptr2Str(scan.ExternalID), stats)
-
-	// Store scan
-	scan.ID = id
-	now := time.Now()
-	scan.StartTime = &now
-	counts := len(scanPayload.Scan.Checks)
-	scan.CheckCount = &counts
-	_, err = s.db.CreateScan(id, *scan)
-	if err != nil {
-		return uuid.Nil, err
-	}
-	_ = level.Warn(s.logger).Log("ScanCreated", scanResponse.Scan.ID.String())
-	_, _, err = s.updateScanStatus(id)
-	if err != nil {
-		return uuid.Nil, err
-	}
-	return id, nil
 }
 
 // ProcessScanCheckNotification process and update the checks. The func will
@@ -532,21 +391,8 @@ func (s ScansService) notifyCurrentScanInfo(scanID uuid.UUID) error {
 	if err != nil {
 		return err
 	}
-
 	s.pushScanMetrics(metricsScanFinished, ptr2Str(scan.Tag), ptr2Str(scan.ExternalID), scanStats{})
-
-	m := api.ScanNotification{
-		ScanID:        scan.ID.String(),
-		ProgramID:     ptr2Str(scan.ExternalID),
-		Status:        ptr2Str(scan.Status),
-		Tag:           ptr2Str(scan.Tag),
-		Trigger:       ptr2Str(scan.Trigger),
-		ScheduledTime: ptr2Time(scan.ScheduledTime),
-		StartTime:     ptr2Time(scan.StartTime),
-		EndTime:       ptr2Time(scan.EndTime),
-		CheckCount:    ptr2Int(scan.CheckCount),
-	}
-	return s.notifier.Notify(m)
+	return nil
 }
 
 func (s ScansService) updateScanStatus(id uuid.UUID) (int64, string, error) {
@@ -702,71 +548,6 @@ func statusFromChecks(scanID uuid.UUID, checkStats map[string]int, n float32, l 
 		Status:   &status,
 		EndTime:  endTime,
 	}
-}
-
-func createScanChecks(scan api.Scan) ([]*client.CheckPayload, error) {
-	checks := []*client.CheckPayload{}
-	targetGroupOpts := map[string]interface{}{}
-	targetsGroup := scan.Targets
-	typesGroup := scan.ChecktypesGroup
-	if targetsGroup.Options != "" {
-		err := json.Unmarshal([]byte(targetsGroup.Options), &targetGroupOpts)
-		if err != nil {
-			return []*client.CheckPayload{}, errors.Assertion(err)
-		}
-	}
-	for _, t := range targetsGroup.Targets {
-		targetOpts := map[string]interface{}{}
-		if t.Options != "" {
-			err := json.Unmarshal([]byte(t.Options), &targetOpts)
-			if err != nil {
-				return []*client.CheckPayload{}, errors.Assertion(err)
-			}
-		}
-		targetOpts = mergeOptions(targetGroupOpts, targetOpts)
-		for _, ct := range typesGroup.Checktypes {
-			ct := ct // This fixes the gotcha of reusing the structure.
-			data := client.CheckData{
-				ChecktypeName: &ct.Name, // Related with the gotcha mentioned above.
-				Target:        t.Identifier,
-			}
-			checkOpts := map[string]interface{}{}
-			if ct.Options != "" {
-				err := json.Unmarshal([]byte(ct.Options), &checkOpts)
-				if err != nil {
-					return []*client.CheckPayload{}, errors.Assertion(err)
-				}
-			}
-			checkOpts = mergeOptions(targetOpts, checkOpts)
-			if len(checkOpts) > 0 {
-				opts, err := json.Marshal(checkOpts)
-				if err != nil {
-					return []*client.CheckPayload{}, errors.Default(err)
-				}
-				strOpts := string(opts)
-				data.Options = &strOpts
-			}
-			data.Tag = scan.Tag
-			payload := client.CheckPayload{
-				Check: &data,
-			}
-			checks = append(checks, &payload)
-		}
-
-	}
-	return checks, nil
-}
-
-// mergeOptions takes two check options.
-func mergeOptions(optsA map[string]interface{}, optsB map[string]interface{}) map[string]interface{} {
-	merged := map[string]interface{}{}
-	for k, v := range optsA {
-		merged[k] = v
-	}
-	for k, v := range optsB {
-		merged[k] = v
-	}
-	return merged
 }
 
 func ptr2Str(p *string) string {

@@ -28,10 +28,10 @@ type Endpoints struct {
 }
 
 // MakeEndpoints initialize endpoints using the given service
-func MakeEndpoints(s ScanEngineService, createChecksAsync bool) *Endpoints {
+func MakeEndpoints(s ScanEngineService) *Endpoints {
 	return &Endpoints{
 		Healthcheck:         makeHealthcheckEndpoint(s),
-		CreateScan:          makeCreateScanEndpoint(s, createChecksAsync),
+		CreateScan:          makeCreateScanEndpoint(s),
 		GetScan:             makeGetScanEndpoint(s),
 		GetScanByExternalID: makeGetScanByExternalIDEndpoint(s),
 		AbortScan:           makeAbortScanEndpoint(s),

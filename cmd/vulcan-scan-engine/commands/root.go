@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"os/signal"
@@ -22,6 +23,7 @@ import (
 	goaclient "github.com/goadesign/goa/client"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"gopkg.in/yaml.v3"
 
 	"github.com/adevinta/vulcan-core-cli/vulcan-core/client"
 	metrics "github.com/adevinta/vulcan-metrics-client"
@@ -33,6 +35,7 @@ import (
 	"github.com/adevinta/vulcan-scan-engine/pkg/api/persistence/migrations"
 	"github.com/adevinta/vulcan-scan-engine/pkg/api/service"
 	"github.com/adevinta/vulcan-scan-engine/pkg/api/transport"
+	checkmetrics "github.com/adevinta/vulcan-scan-engine/pkg/metrics"
 	"github.com/adevinta/vulcan-scan-engine/pkg/notify"
 	"github.com/adevinta/vulcan-scan-engine/pkg/queue"
 	"github.com/adevinta/vulcan-scan-engine/pkg/scans"
@@ -40,9 +43,10 @@ import (
 )
 
 var (
-	cfgFile  string
-	httpPort int
-	cfg      config
+	cfgFile       string
+	httpPort      int
+	cfgQueuesFile string
+	cfg           config
 	// all, debug, error, info, warn
 	logLevels = map[string]func(log.Logger) log.Logger{
 		"all": func(l log.Logger) log.Logger {
@@ -92,6 +96,7 @@ func init() {
 	cobra.OnInitialize(initConfig)
 
 	rootCmd.Flags().StringVarP(&cfgFile, "config", "c", "", "config file (default is $HOME/.vulcan-scan-engine)")
+	rootCmd.Flags().StringVarP(&cfgQueuesFile, "queues", "q", "", "checktypes queues config file")
 	rootCmd.Flags().IntVarP(&httpPort, "port", "p", 0, "web server listening port")
 	err := viper.BindPFlag("server.port", rootCmd.Flags().Lookup("port"))
 	if err != nil {
@@ -109,10 +114,9 @@ type dbConfig struct {
 	MigrationsSubBir string `mapstructure:"migrations_subdir"`
 }
 
-type vulcanCoreAPIConfig struct {
-	Schema              string
-	Host                string
-	EnableAsyncCreation bool `mapstructure:"enable_async_creation"`
+type checktypesInformer struct {
+	Schema string
+	Host   string
 }
 
 type logConfig struct {
@@ -129,11 +133,52 @@ type checkCreatorConfig struct {
 	Period int `mapstructure:"period"`
 }
 
+type checktypesQueuesConfig struct {
+	SendToAgents bool `yaml:"sendToAgents"`
+	// Defines the arns of the agent queues.
+	Queues []checktypeQueueConfig `yaml:"queues"`
+}
+
+// ARNs returns map with the following shape: ["queuename":"arn1"]
+func (c checktypesQueuesConfig) ARNs() map[string]string {
+	var qarns = make(map[string]string)
+	for _, q := range c.Queues {
+		qarns[q.Name] = q.ARN
+	}
+	return qarns
+}
+
+// Names returns a map with the following shape:
+// ["default":"default","vulcan-nessus":"nessus"]
+func (c checktypesQueuesConfig) Names() map[string]string {
+	var ctQNames = make(map[string]string)
+	for _, q := range c.Queues {
+		if q.Name == "default" {
+			ctQNames["default"] = "default"
+			continue
+		}
+		cts := q.Checktypes
+		if len(cts) < 1 {
+			continue
+		}
+		for _, ct := range cts {
+			ctQNames[ct] = q.Name
+		}
+	}
+	return ctQNames
+}
+
+type checktypeQueueConfig struct {
+	Name       string
+	ARN        string
+	Checktypes []string
+}
+
 type config struct {
 	Log           logConfig
 	Server        serverConfig
 	DB            dbConfig
-	Vulcan        vulcanCoreAPIConfig
+	Vulcan        checktypesInformer
 	SQS           queue.Config
 	SNS           notify.Config
 	SNSChecks     notify.Config      `mapstructure:"sns_checks"`
@@ -186,6 +231,18 @@ func startServer() error {
 		return err
 	}
 
+	var ctqConfig checktypesQueuesConfig
+	if cfgQueuesFile != "" {
+		queueContents, err := ioutil.ReadFile(cfgQueuesFile)
+		if err != nil {
+			return err
+		}
+		err = yaml.Unmarshal(queueContents, &ctqConfig)
+		if err != nil {
+			return err
+		}
+	}
+
 	wd, err := os.Getwd()
 	if err != nil {
 		return err
@@ -207,13 +264,6 @@ func startServer() error {
 	st := persistence.NewPersistence(db)
 	mux := http.NewServeMux()
 
-	notifier, err := notify.NewSNSNotifier(cfg.SNS, logger)
-	if err != nil {
-		return err
-	}
-
-	scanNotifier := notify.NewScanNotifier(notifier)
-
 	apiClient := newVulcanCoreAPIClient(cfg.Vulcan)
 
 	metricsClient, err := metrics.NewClient()
@@ -221,37 +271,42 @@ func startServer() error {
 		return err
 	}
 
+	checkMetrics := &checkmetrics.Checks{Client: metricsClient}
+
 	var (
-		cCreator *scans.ChecksCreator
-		sch      *scheduler.Scheduler
+		creator interface {
+			CreateScanChecks(id string) error
+			CreateIncompleteScansChecks() error
+		}
+		sch *scheduler.Scheduler
 	)
-	if cfg.Vulcan.EnableAsyncCreation {
-		// If the AsyncCreation is enabled the SNSNotifier must be activated.
-		cfg.SNSChecks.Enabled = true
-		cn, err := notify.NewSNSNotifier(cfg.SNSChecks, logger)
+
+	producer, err := queue.NewMultiSQSProducer(ctqConfig.ARNs(), logger)
+	if err != nil {
+		return err
+	}
+	jobsSender, err := scans.NewJobQueueSender(producer, ctqConfig.Names())
+	if err != nil {
+		return err
+	}
+	creator = scans.NewJobsCreator(st, jobsSender, apiClient, checkMetrics, logger)
+	// Try to create possible pending scan checks without having to wait
+	// until the next scheduled task runs.
+	go func() {
+		err := creator.CreateIncompleteScansChecks()
 		if err != nil {
-			return err
+			logger.Log("CreateIncompleteScanChecksError", err.Error())
 		}
-		checksNotifier := notify.NewCheckNotifier(cn)
-		cCreator = scans.NewChecksCreator(st, checksNotifier, logger)
-		// Try to create possible pending scan checks without having to wait
-		// until the next scheduled task runs.
-		go func() {
-			err := cCreator.CreateIncompleteScansChecks()
-			if err != nil {
-				logger.Log("CreateIncompleteScanChecksError", err.Error())
-			}
-		}()
-		// Create the workers that will run each time period.
-		sch = scheduler.NewScheduler(logger)
-		for i := 0; i < cfg.ChecksCreator.NumOfWorkers; i++ {
-			t := &scans.ChecksCreatorTask{ChecksCreator: cCreator}
-			p := time.Duration(cfg.ChecksCreator.Period) * time.Second
-			sch.AddTask(t, p)
-		}
+	}()
+	// Create the workers that will run each time period.
+	sch = scheduler.NewScheduler(logger)
+	for i := 0; i < cfg.ChecksCreator.NumOfWorkers; i++ {
+		t := &scans.ChecksRunnerTask{ChecksRunnerForTask: creator}
+		p := time.Duration(cfg.ChecksCreator.Period) * time.Second
+		sch.AddTask(t, p)
 	}
 
-	scanService := service.New(logger, st, apiClient, scanNotifier, metricsClient, cCreator)
+	scanService := service.New(logger, st, apiClient, metricsClient, creator)
 
 	healthCheckService := service.HealthcheckService{
 		DB: db,
@@ -267,7 +322,7 @@ func startServer() error {
 		healthCheckService,
 	}
 
-	endpoints := endpoint.MakeEndpoints(scanEngineSrv, cfg.Vulcan.EnableAsyncCreation)
+	endpoints := endpoint.MakeEndpoints(scanEngineSrv)
 
 	addLoggingMiddleware(endpoints, logger)
 	if cfg.Metrics.Enabled {
@@ -349,7 +404,7 @@ func addLoggingMiddleware(endpoints *endpoint.Endpoints, logger log.Logger) {
 	endpoints.AbortScan = withLog(endpoints.AbortScan)
 }
 
-func newVulcanCoreAPIClient(config vulcanCoreAPIConfig) *client.Client {
+func newVulcanCoreAPIClient(config checktypesInformer) *client.Client {
 	httpClient := newHTTPClient()
 	c := client.New(goaclient.HTTPClientDoer(httpClient))
 	c.Client.Scheme = config.Schema

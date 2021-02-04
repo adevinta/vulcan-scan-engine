@@ -39,3 +39,7 @@ topic_arn = "$AWS_SNS_CHECKS_ARN"
 num_of_workers = $AWS_CHECK_CREATOR_WORKERS
 # in seconds.
 period =  $AWS_CHECK_CREATOR_PERIOD
+
+# Enable the creation of the checks directly to the agent queue. If the
+# AWS_CHECK_CREATOR_SEND_TO_AGENTS is not set use false as default option.
+send_to_agents = ${AWS_CHECK_CREATOR_SEND_TO_AGENTS:-false}

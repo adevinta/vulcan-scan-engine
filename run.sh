@@ -19,4 +19,4 @@ flyway -user=$PG_USER -password=$PG_PASSWORD \
   -url=jdbc:postgresql://$PG_HOST:$PG_PORT/$PG_NAME?sslmode=$PG_SSLMODE \
   -baselineOnMigrate=true -locations=filesystem:/app/sql migrate
 
-./vulcan-scan-engine -c run.toml
+./vulcan-scan-engine -c run.toml -q ./config/queues.yaml

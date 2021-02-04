@@ -19,7 +19,6 @@ import (
 // ScanCreator defines the service interface required by the endpoint CreateScan
 type ScanCreator interface {
 	CreateScan(context.Context, *api.Scan) (uuid.UUID, error)
-	CreateScanChecksAsync(context.Context, *api.Scan) (uuid.UUID, error)
 }
 
 // ScanGetter defines the service interface required by the endpoint GetScan
@@ -82,7 +81,7 @@ type Check struct {
 	Webhook     string    `json:"webhook"`
 }
 
-func makeCreateScanEndpoint(s ScanCreator, createChecksAsync bool) endpoint.Endpoint {
+func makeCreateScanEndpoint(s ScanCreator) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
 		requestBody, ok := request.(*ScanRequest)
 		if !ok {
@@ -95,22 +94,10 @@ func makeCreateScanEndpoint(s ScanCreator, createChecksAsync bool) endpoint.Endp
 			ScheduledTime: requestBody.ScheduledTime,
 		}
 
-		// If the request specifies the field TargetGroups the request is for the version 2
-		// of the endpoint that allows to specify multiple tuples of checktypes and targets.
-		// If not we assume the request is for the old endpoint version to be deprecated.
-		if len(requestBody.TargetGroups) > 0 {
-			scan.TargetGroups = &requestBody.TargetGroups
-		} else {
-			scan.ChecktypesGroup = &requestBody.ChecktypesGroup
-			scan.Targets = &requestBody.TargetGroup
-		}
+		scan.TargetGroups = &requestBody.TargetGroups
+
 		// Creates the scan
-		var id uuid.UUID
-		if !createChecksAsync {
-			id, err = s.CreateScan(ctx, scan)
-		} else {
-			id, err = s.CreateScanChecksAsync(ctx, scan)
-		}
+		id, err := s.CreateScan(ctx, scan)
 		if err != nil {
 			return nil, err
 		}
