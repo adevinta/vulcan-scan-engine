@@ -1,7 +1,3 @@
-/*
-Copyright 2021 Adevinta
-*/
-
 package service
 
 import (
@@ -63,6 +59,7 @@ type fakeScansPersistence struct {
 	ScanUpdater             func(id uuid.UUID, scan api.Scan, updateStates []string) (int64, error)
 	ScanBYExternalIDGetter  func(ID string, limit *uint32) ([]api.Scan, error)
 	ScanChecksRemover       func(scanID uuid.UUID) error
+	ScanIDForCheckGetter    func(ID uuid.UUID) (uuid.UUID, error)
 }
 
 func (f fakeScansPersistence) CreateScan(id uuid.UUID, scan api.Scan) (int64, error) {
@@ -99,6 +96,10 @@ func (f fakeScansPersistence) GetChecksStatusStats(scanID uuid.UUID) (map[string
 
 func (f fakeScansPersistence) DeleteScanChecks(scanID uuid.UUID) error {
 	return f.ScanChecksRemover(scanID)
+}
+
+func (f fakeScansPersistence) GetScanIDForCheck(ID uuid.UUID) (uuid.UUID, error) {
+	return f.ScanIDForCheckGetter(ID)
 }
 
 type inMemoryAssettypeInformer struct {

@@ -1,7 +1,3 @@
-/*
-Copyright 2021 Adevinta
-*/
-
 package api
 
 import (
@@ -88,8 +84,8 @@ type Checktype struct {
 type Check struct {
 	ID            string             `json:"id" validate:"required"`
 	Status        string             `json:"status" validate:"required"`
-	ScanID        string             `json:"scan_id" validate:"required"`
-	Target        string             `json:"target" validate:"required"`
+	ScanID        string             `json:"scan_id"`
+	Target        string             `json:"target"`
 	Progress      *float32           `json:"progress,omitempty"`
 	ScanIndex     *string            `json:"scan_index,omitempty"`
 	AgentID       *string            `json:"agent_id,omitempty"`

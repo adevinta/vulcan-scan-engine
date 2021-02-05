@@ -1,12 +1,7 @@
-/*
-Copyright 2021 Adevinta
-*/
-
 package queue
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"sync"
@@ -257,14 +252,9 @@ func (s *SQSConsumer) readAndProcess(ctx context.Context) error {
 
 func (s *SQSConsumer) process(ctx context.Context, m sqs.Message) error {
 	_ = level.Info(s.logger).Log("ProcessingMessageWithID", *m.MessageId)
-	_ = level.Debug(s.logger).Log("MessageBody", string(*m.Body))
-	e := message{}
-	err := json.Unmarshal([]byte(*m.Body), &e)
-	if err != nil {
-		return err
-	}
-	if e.Message == nil {
+	if m.Body == nil {
 		return errInvalidEvent
 	}
-	return s.processor.Process(ctx, []byte(*e.Message))
+	_ = level.Debug(s.logger).Log("MessageBody", string(*m.Body))
+	return s.processor.Process(ctx, []byte(*m.Body))
 }

@@ -2,5 +2,8 @@ vendor/
 *.swp
 *.swo
 .DS_Store
+local.toml
+local.queues.yaml
+
 # Linux binary used in Dockerfile
 cmd/vulcan-scan-engine/vulcan-scan-engine

@@ -1,7 +1,3 @@
-/*
-Copyright 2021 Adevinta
-*/
-
 package service
 
 import (
@@ -108,6 +104,7 @@ type ScansPersistence interface {
 	GetScansByExternalIDWithLimit(ID string, limit *uint32) ([]api.Scan, error)
 	GetChecksStatusStats(scanID uuid.UUID) (map[string]int, error)
 	DeleteScanChecks(scanID uuid.UUID) error
+	GetScanIDForCheck(ID uuid.UUID) (uuid.UUID, error)
 }
 
 type ChecktypesInformer interface {
@@ -311,10 +308,14 @@ func (s ScansService) ProcessScanCheckNotification(ctx context.Context, msg []by
 		_ = level.Error(s.logger).Log("ErrorValidatingCheckUpdateEvent", err)
 		return nil
 	}
-
-	scanID, err := uuid.FromString(c.ScanID)
+	checkID, err := uuid.FromString(c.ID)
 	if err != nil {
-		_ = level.Error(s.logger).Log("NotValidScanID", err)
+		_ = level.Error(s.logger).Log("NotValidCheckID", err)
+		return nil
+	}
+	scanID, err := s.db.GetScanIDForCheck(checkID)
+	if err != nil {
+		_ = level.Error(s.logger).Log("CheckForMsgDoesNotExist", err)
 		return nil
 	}
 	c.ScanID = scanID.String()
@@ -323,7 +324,6 @@ func (s ScansService) ProcessScanCheckNotification(ctx context.Context, msg []by
 		_ = level.Error(s.logger).Log("NotValidScanID", err)
 		return nil
 	}
-
 	progress := ptr2Float(c.Progress)
 	// Don't take into account inconsistent progress in a message with a
 	// terminal status.

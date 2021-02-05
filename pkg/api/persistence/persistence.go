@@ -1,7 +1,3 @@
-/*
-Copyright 2021 Adevinta
-*/
-
 package persistence
 
 import (
@@ -187,6 +183,11 @@ func (db Persistence) InsertCheckIfNotExists(c api.Check) (string, error) {
 		return "", err
 	}
 	return db.store.InsertChildDocIfNotExistsFromDocType(c, sID, id, index, c.Data)
+}
+
+func (db Persistence) GetScanIDForCheck(ID uuid.UUID) (uuid.UUID, error) {
+	c := api.Check{}
+	return db.store.GetParentID(c, ID)
 }
 
 func (db Persistence) GetCreatingScans() ([]string, error) {

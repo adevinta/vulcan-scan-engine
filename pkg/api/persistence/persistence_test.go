@@ -1,12 +1,9 @@
-/*
-Copyright 2021 Adevinta
-*/
-
 package persistence
 
 import (
 	"fmt"
 	"os"
+	"reflect"
 	"testing"
 
 	"github.com/adevinta/vulcan-scan-engine/pkg/api"
@@ -440,5 +437,38 @@ func TestPersistence_TryLockScan(t *testing.T) {
 	err = s.ReleaseScanLock(lock)
 	if err != nil {
 		t.Error("error realeasing lock")
+	}
+}
+
+func TestPersistence_GetScanIDForCheck(t *testing.T) {
+	tests := []struct {
+		name    string
+		ID      uuid.UUID
+		want    uuid.UUID
+		wantErr bool
+	}{
+		{
+			name: "ReturnsScanIDForACheck",
+			ID:   UUIDFromString(fixtureScans["Scan1"].Checks["Check1"]),
+			want: UUIDFromString(fixtureScans["Scan1"].ID),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			db, err := db.NewDB(dialect, connStr)
+			defer db.Close() //nolint
+			if err != nil {
+				t.Fatal(err)
+			}
+			s := NewPersistence(db)
+			got, err := s.GetScanIDForCheck(tt.ID)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Persistence.GetScanIDForCheck() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Persistence.GetScanIDForCheck() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }

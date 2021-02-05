@@ -1,7 +1,3 @@
-/*
-Copyright 2021 Adevinta
-*/
-
 package db
 
 import (
@@ -212,6 +208,24 @@ func (db DB) GetChildDoc(table string, parentID, id uuid.UUID) ([]byte, error) {
 	}
 	err = res.Scan(&data)
 	return data, err
+}
+
+// GetParentIDDoc gets the parent id from a given ChildID
+func (db DB) GetParentIDDoc(table string, childID uuid.UUID) (uuid.UUID, error) {
+	strExec := `SELECT parent_id FROM %s WHERE id = ?`
+	st := fmt.Sprintf(strExec, table)
+	st = db.db.Rebind(st)
+	res, err := db.db.Query(st, childID)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	defer res.Close() // nolint
+	if !res.Next() {
+		return uuid.Nil, errors.NotFound(nil)
+	}
+	var id uuid.UUID
+	err = res.Scan(&id)
+	return id, err
 }
 
 // GetChildDocsStatsForField gets the stats of all the child documents belonging
@@ -447,7 +461,7 @@ func (db DB) DeleteChildDocuments(id uuid.UUID, doc interface{}) error {
 	return db.DeleteChildDocs(tableName, id)
 }
 
-// CreateChildDocument creates a child document in the underlaying store
+// CreateChildDocument creates a child document in the underlaying store.
 func (db DB) CreateChildDocument(id uuid.UUID, doc interface{}, data []byte) (int64, error) {
 	tableName := reflect.TypeOf(doc).Name()
 	if tableName == "" {
@@ -570,6 +584,18 @@ func (db DB) InsertChildDocIfNotExistsFromDocType(doc interface{}, parentID, id 
 	tableName = tableName + "s"
 	tableName = strings.ToLower(tableName)
 	return db.InsertChildDocIfNotExists(tableName, parentID, id, index, data)
+}
+
+// GetParentID returns the parent ID of the first row with the given childID.
+func (db DB) GetParentID(childDoc interface{}, childID uuid.UUID) (uuid.UUID, error) {
+	tableName := reflect.TypeOf(childDoc).Name()
+	if tableName == "" {
+		return uuid.Nil, ErrAnonymousType
+	}
+	// By convention the name of the type is the singular form of table's name.
+	tableName = tableName + "s"
+	tableName = strings.ToLower(tableName)
+	return db.GetParentIDDoc(tableName, childID)
 }
 
 // Ping pings the underlaying db to check its connected and prepared to receive commands.
