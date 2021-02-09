@@ -367,14 +367,6 @@ func (s ScansService) ProcessScanCheckNotification(ctx context.Context, msg []by
 		_ = level.Debug(s.logger).Log("ScanStatusSet", scanID.String()+";"+scanState)
 	}
 
-	// If the scan was finished we ensure we delete the checks.
-	if scanState == ScanStatusFinished {
-		err = s.db.DeleteScanChecks(scanID)
-		if err != nil {
-			return err
-		}
-	}
-
 	// If the current scans is finished and this check state update was the one
 	// that caused it to be in that state the we notify the scan is finished.
 	if count > 0 && scanState == ScanStatusFinished {
