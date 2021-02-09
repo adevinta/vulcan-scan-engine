@@ -116,9 +116,9 @@ func (db DB) UpsertChildDocWithCondition(table string, parentID, id uuid.UUID, d
 	strExec := `INSERT INTO %s VALUES (?,?,?,?,?)
 		ON CONFLICT ON CONSTRAINT %s_pkey
 		DO UPDATE SET
-		data = ?, updated_at = ?
+		data = %s.data || ?, updated_at = ?
 		WHERE %s`
-	st := fmt.Sprintf(strExec, table, table, condition)
+	st := fmt.Sprintf(strExec, table, table, table, condition)
 	st = db.db.Rebind(st)
 	args := []interface{}{id, parentID, doc, d, d, doc, d}
 	args = append(args, params...)

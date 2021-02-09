@@ -67,21 +67,20 @@ func (c states) Init() {
 		sort.Strings(s)
 	}
 }
-func (c states) LessOrEqual(s string) ([]string, error) {
+
+// LessOrEqual returns the states from state machine
+// that are preceding s, if s is not an existent state
+// in state machine, all states are returned.
+func (c states) LessOrEqual(s string) []string {
 	res := []string{}
-	var found bool
 	for i := 0; i < len(c); i++ {
 		res = append(res, c[i]...)
 		x := sort.SearchStrings(c[i], s)
 		if x < len(c[i]) && c[i][x] == s {
-			found = true
 			break
 		}
 	}
-	if !found {
-		return []string{}, ErrNotDefinedCheckState
-	}
-	return res, nil
+	return res
 }
 func (c states) Terminal() []string {
 	return c[len(c)-1]
@@ -341,13 +340,9 @@ func (s ScansService) ProcessScanCheckNotification(ctx context.Context, msg []by
 		return nil
 	}
 
-	updateStates, err := checkStates.LessOrEqual(c.Status)
-	if err != nil {
-		// State not valid, log the error but mark the event as processed.
-		_ = level.Error(s.logger).Log(err, c.Status)
-		return nil
-	}
 	c.Data = msg
+	updateStates := checkStates.LessOrEqual(c.Status)
+
 	count, err := s.db.UpsertCheck(scanID, id, c, updateStates)
 	if err != nil {
 		return err

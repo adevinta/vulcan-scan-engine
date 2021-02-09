@@ -456,11 +456,10 @@ func Test_states_LessOrEqual(t *testing.T) {
 		s string
 	}
 	tests := []struct {
-		name    string
-		c       states
-		args    args
-		want    []string
-		wantErr bool
+		name string
+		c    states
+		args args
+		want []string
 	}{
 		{
 			name: "GetAllStates",
@@ -479,11 +478,7 @@ func Test_states_LessOrEqual(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.c.LessOrEqual(tt.args.s)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("states.LessOrEqual() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
+			got := tt.c.LessOrEqual(tt.args.s)
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("states.LessOrEqual() = %v, want %v", got, tt.want)
 			}

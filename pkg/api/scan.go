@@ -83,7 +83,7 @@ type Checktype struct {
 // Check holds all the information this service needs to process regarding a check.
 type Check struct {
 	ID            string             `json:"id" validate:"required"`
-	Status        string             `json:"status" validate:"required"`
+	Status        string             `json:"status"`
 	ScanID        string             `json:"scan_id"`
 	Target        string             `json:"target"`
 	Progress      *float32           `json:"progress,omitempty"`
