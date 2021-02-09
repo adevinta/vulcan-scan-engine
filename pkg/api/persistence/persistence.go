@@ -182,6 +182,11 @@ func (db Persistence) InsertCheckIfNotExists(c api.Check) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	data, err :=json.Marshal(c)
+	if err != nil {
+		return "", err
+	}
+	c.Data = data
 	return db.store.InsertChildDocIfNotExistsFromDocType(c, sID, id, index, c.Data)
 }
 
