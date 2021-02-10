@@ -16,6 +16,11 @@ import (
 	"github.com/go-kit/kit/log/level"
 )
 
+// Notifier represents a generic notifier API.
+type Notifier interface {
+	Push(message interface{}) error
+}
+
 // Config holds the required sqs config information.
 type Config struct {
 	Endpoint string `mapstructure:"endpoint"`

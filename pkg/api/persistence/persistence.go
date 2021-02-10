@@ -10,6 +10,18 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
+type ScansStore interface {
+	CreateScan(id uuid.UUID, scan api.Scan) (int64, error)
+	UpsertCheck(scanID, id uuid.UUID, check api.Check, updateStates []string) (int64, error)
+	GetScanChecks(scanID uuid.UUID) ([]api.Check, error)
+	GetScanByID(id uuid.UUID) (api.Scan, error)
+	UpdateScan(id uuid.UUID, scan api.Scan, updateStates []string) (int64, error)
+	GetScansByExternalIDWithLimit(ID string, limit *uint32) ([]api.Scan, error)
+	GetChecksStatusStats(scanID uuid.UUID) (map[string]int, error)
+	DeleteScanChecks(scanID uuid.UUID) error
+	GetScanIDForCheck(ID uuid.UUID) (uuid.UUID, error)
+}
+
 // Persistence implements a
 type Persistence struct {
 	store db.DB

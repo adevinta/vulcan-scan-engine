@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"sort"
 	"strings"
 	"time"
 
@@ -20,6 +19,7 @@ import (
 	"github.com/adevinta/vulcan-core-cli/vulcan-core/client"
 	metrics "github.com/adevinta/vulcan-metrics-client"
 	"github.com/adevinta/vulcan-scan-engine/pkg/api"
+	"github.com/adevinta/vulcan-scan-engine/pkg/api/persistence"
 )
 
 const (
@@ -42,79 +42,9 @@ const (
 	metricsScanFinished  = "finished"
 )
 
-var (
-	checkStates = states{
-		[]string{"CREATED"},
-		[]string{"QUEUED"},
-		[]string{"ASSIGNED"},
-		[]string{"RUNNING"},
-		[]string{"PURGING"},
-		[]string{"MALFORMED", "ABORTED", "KILLED", "FAILED", "FINISHED", "TIMEOUT", "INCONCLUSIVE"},
-	}
-	// ScansByExternalIDLimit the number of scans to return when querying by external
-	// id.
-	ScansByExternalIDLimit uint32 = 5
-)
-
-// states holds all prosibles states of a finite state machine
-// in a way that is easy to determine the states less or equal than a
-// given state. This implementation supposes that there are only few states
-// so the cost of walking through all the states is close to constant.
-type states [][]string
-
-func (c states) Init() {
-	for _, s := range c {
-		sort.Strings(s)
-	}
-}
-
-// LessOrEqual returns the states from state machine
-// that are preceding s, if s is not an existent state
-// in state machine, all states are returned.
-func (c states) LessOrEqual(s string) []string {
-	res := []string{}
-	for i := 0; i < len(c); i++ {
-		res = append(res, c[i]...)
-		x := sort.SearchStrings(c[i], s)
-		if x < len(c[i]) && c[i][x] == s {
-			break
-		}
-	}
-	return res
-}
-func (c states) Terminal() []string {
-	return c[len(c)-1]
-}
-func (c states) IsTerminal(s string) bool {
-	t := c.Terminal()
-	x := sort.SearchStrings(t, s)
-	return (x < len(t) && t[x] == s)
-}
-func init() {
-	checkStates.Init()
-}
-
-type ScansPersistence interface {
-	CreateScan(id uuid.UUID, scan api.Scan) (int64, error)
-	UpsertCheck(scanID, id uuid.UUID, check api.Check, updateStates []string) (int64, error)
-	GetScanChecks(scanID uuid.UUID) ([]api.Check, error)
-	GetScanByID(id uuid.UUID) (api.Scan, error)
-	UpdateScan(id uuid.UUID, scan api.Scan, updateStates []string) (int64, error)
-	GetScansByExternalIDWithLimit(ID string, limit *uint32) ([]api.Scan, error)
-	GetChecksStatusStats(scanID uuid.UUID) (map[string]int, error)
-	DeleteScanChecks(scanID uuid.UUID) error
-	GetScanIDForCheck(ID uuid.UUID) (uuid.UUID, error)
-}
-
 type ChecktypesInformer interface {
 	IndexAssettypes(ctx context.Context, path string) (*http.Response, error)
 	DecodeAssettypeCollection(resp *http.Response) (client.AssettypeCollection, error)
-}
-
-// ScanNotifier defines the services needed by the Scan srv to send
-// notifications when a scan finishes.
-type ScanNotifier interface {
-	Notify(scan api.ScanNotification) error
 }
 
 // AsyncChecksCreator ...
@@ -133,7 +63,7 @@ type ChecktypesByAssettypes map[string]map[string]struct{}
 
 // ScansService implements the functionality needed to create and query scans.
 type ScansService struct {
-	db            ScansPersistence
+	db            persistence.ScansStore
 	logger        log.Logger
 	ctInformer    ChecktypesInformer
 	metricsClient metrics.Client
@@ -141,7 +71,7 @@ type ScansService struct {
 }
 
 // New Creates and returns ScansService with all the dependencies wired in.
-func New(logger log.Logger, db ScansPersistence, client ChecktypesInformer,
+func New(logger log.Logger, db persistence.ScansStore, client ChecktypesInformer,
 	metricsClient metrics.Client, accreator AsyncChecksCreator) ScansService {
 	return ScansService{
 		db:            db,
@@ -296,6 +226,7 @@ func (s ScansService) checktypesByAssettype(ctx context.Context) (ChecktypesByAs
 // return nil if the event must be marked as consumed by the caller.
 func (s ScansService) ProcessScanCheckNotification(ctx context.Context, msg []byte) error {
 	_ = level.Debug(s.logger).Log("ProcessingMessage", string(msg))
+
 	c := api.Check{}
 	err := json.Unmarshal(msg, &c)
 	if err != nil {
@@ -323,7 +254,9 @@ func (s ScansService) ProcessScanCheckNotification(ctx context.Context, msg []by
 		_ = level.Error(s.logger).Log("NotValidScanID", err)
 		return nil
 	}
+	c.Data = msg
 	progress := ptr2Float(c.Progress)
+
 	// Don't take into account inconsistent progress in a message with a
 	// terminal status.
 	if checkStates.IsTerminal(c.Status) && (progress != 1.0) {
@@ -340,10 +273,7 @@ func (s ScansService) ProcessScanCheckNotification(ctx context.Context, msg []by
 		return nil
 	}
 
-	c.Data = msg
-	updateStates := checkStates.LessOrEqual(c.Status)
-
-	count, err := s.db.UpsertCheck(scanID, id, c, updateStates)
+	count, err := s.db.UpsertCheck(scanID, id, c, checkStates.LessOrEqual(c.Status))
 	if err != nil {
 		return err
 	}
@@ -363,7 +293,7 @@ func (s ScansService) ProcessScanCheckNotification(ctx context.Context, msg []by
 	}
 
 	// If the current scans is finished and this check state update was the one
-	// that caused it to be in that state the we notify the scan is finished.
+	// that caused it to be in that state then we notify the scan is finished.
 	if count > 0 && scanState == ScanStatusFinished {
 		err = s.notifyCurrentScanInfo(scanID)
 		if err != nil {

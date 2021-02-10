@@ -18,6 +18,7 @@ import (
 	"github.com/adevinta/vulcan-core-cli/vulcan-core/client"
 	metrics "github.com/adevinta/vulcan-metrics-client"
 	"github.com/adevinta/vulcan-scan-engine/pkg/api"
+	"github.com/adevinta/vulcan-scan-engine/pkg/api/persistence"
 )
 
 var (
@@ -388,7 +389,7 @@ func TestScansService_CreateScan(t *testing.T) {
 
 func TestScansService_AbortScan(t *testing.T) {
 	type fields struct {
-		storeCreator func() ScansPersistence
+		storeCreator func() persistence.ScansStore
 		logger       log.Logger
 	}
 	type args struct {
@@ -404,7 +405,7 @@ func TestScansService_AbortScan(t *testing.T) {
 		{
 			name: "PushMessageToAbort",
 			fields: fields{
-				storeCreator: func() ScansPersistence {
+				storeCreator: func() persistence.ScansStore {
 					scans := new(sync.Map)
 					id, _ := uuid.FromString("b3b5af18-4e1d-11e8-9c2d-fa7ae01bbebd")
 					scans.Store(id, api.Scan{
@@ -423,7 +424,7 @@ func TestScansService_AbortScan(t *testing.T) {
 		{
 			name: "ReturnsNotFoundIfScanDoesNotExist",
 			fields: fields{
-				storeCreator: func() ScansPersistence {
+				storeCreator: func() persistence.ScansStore {
 					return newInMemoryStore(new(sync.Map))
 				},
 				logger: log.NewLogfmtLogger(os.Stdout),
