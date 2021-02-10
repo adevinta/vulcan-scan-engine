@@ -20,6 +20,8 @@ import (
 	metrics "github.com/adevinta/vulcan-metrics-client"
 	"github.com/adevinta/vulcan-scan-engine/pkg/api"
 	"github.com/adevinta/vulcan-scan-engine/pkg/api/persistence"
+	"github.com/adevinta/vulcan-scan-engine/pkg/notify"
+	"github.com/adevinta/vulcan-scan-engine/pkg/util"
 )
 
 const (
@@ -63,22 +65,27 @@ type ChecktypesByAssettypes map[string]map[string]struct{}
 
 // ScansService implements the functionality needed to create and query scans.
 type ScansService struct {
-	db            persistence.ScansStore
-	logger        log.Logger
-	ctInformer    ChecktypesInformer
-	metricsClient metrics.Client
-	accreator     AsyncChecksCreator
+	db             persistence.ScansStore
+	logger         log.Logger
+	ctInformer     ChecktypesInformer
+	metricsClient  metrics.Client
+	accreator      AsyncChecksCreator
+	scansNotifier  notify.Notifier
+	checksNotifier notify.Notifier
 }
 
 // New Creates and returns ScansService with all the dependencies wired in.
 func New(logger log.Logger, db persistence.ScansStore, client ChecktypesInformer,
-	metricsClient metrics.Client, accreator AsyncChecksCreator) ScansService {
+	metricsClient metrics.Client, accreator AsyncChecksCreator,
+	scansNotifier notify.Notifier, checksNotifier notify.Notifier) ScansService {
 	return ScansService{
-		db:            db,
-		logger:        logger,
-		ctInformer:    client,
-		accreator:     accreator,
-		metricsClient: metricsClient,
+		db:             db,
+		logger:         logger,
+		ctInformer:     client,
+		accreator:      accreator,
+		metricsClient:  metricsClient,
+		scansNotifier:  scansNotifier,
+		checksNotifier: checksNotifier,
 	}
 
 }
@@ -154,7 +161,7 @@ func (s ScansService) CreateScan(ctx context.Context, scan *api.Scan) (uuid.UUID
 		return uuid.Nil, err
 	}
 	// Push metrics.
-	s.pushScanMetrics(metricsScanCreated, ptr2Str(scan.Tag), ptr2Str(scan.ExternalID), stats)
+	s.pushScanMetrics(metricsScanCreated, util.Ptr2Str(scan.Tag), util.Ptr2Str(scan.ExternalID), stats)
 	_ = level.Warn(s.logger).Log("ScanCreated", id)
 	go func() {
 		err := s.accreator.CreateScanChecks(id.String())
@@ -255,7 +262,7 @@ func (s ScansService) ProcessScanCheckNotification(ctx context.Context, msg []by
 		return nil
 	}
 	c.Data = msg
-	progress := ptr2Float(c.Progress)
+	progress := util.Ptr2Float(c.Progress)
 
 	// Don't take into account inconsistent progress in a message with a
 	// terminal status.
@@ -292,10 +299,16 @@ func (s ScansService) ProcessScanCheckNotification(ctx context.Context, msg []by
 		_ = level.Debug(s.logger).Log("ScanStatusSet", scanID.String()+";"+scanState)
 	}
 
+	// Rely check message
+	err = s.notifyCheck(checkID)
+	if err != nil {
+		return err
+	}
+
 	// If the current scans is finished and this check state update was the one
 	// that caused it to be in that state then we notify the scan is finished.
 	if count > 0 && scanState == ScanStatusFinished {
-		err = s.notifyCurrentScanInfo(scanID)
+		err = s.notifyScan(scanID)
 		if err != nil {
 			return err
 		}
@@ -303,13 +316,23 @@ func (s ScansService) ProcessScanCheckNotification(ctx context.Context, msg []by
 	return nil
 }
 
-func (s ScansService) notifyCurrentScanInfo(scanID uuid.UUID) error {
+func (s ScansService) notifyScan(scanID uuid.UUID) error {
 	scan, err := s.GetScan(context.Background(), scanID.String())
 	if err != nil {
 		return err
 	}
-	s.pushScanMetrics(metricsScanFinished, ptr2Str(scan.Tag), ptr2Str(scan.ExternalID), scanStats{})
-	return nil
+
+	s.pushScanMetrics(metricsScanFinished, util.Ptr2Str(scan.Tag), util.Ptr2Str(scan.ExternalID), scanStats{})
+
+	return s.scansNotifier.Push(scan.ToScanNotification())
+}
+
+func (s ScansService) notifyCheck(checkID uuid.UUID) error {
+	check, err := s.db.GetCheckByID(checkID)
+	if err != nil {
+		return err
+	}
+	return s.checksNotifier.Push(check.ToCheckNotification())
 }
 
 func (s ScansService) updateScanStatus(id uuid.UUID) (int64, string, error) {
@@ -362,8 +385,8 @@ func (s ScansService) updateScanStatus(id uuid.UUID) (int64, string, error) {
 	s.metricsClient.Push(metrics.Metric{
 		Name:  scanCompletionMetric,
 		Typ:   metrics.Histogram,
-		Value: float64(ptr2Float(update.Progress)),
-		Tags:  []string{componentTag, buildScanTag(ptr2Str(scan.Tag), ptr2Str(scan.ExternalID))},
+		Value: float64(util.Ptr2Float(update.Progress)),
+		Tags:  []string{componentTag, buildScanTag(util.Ptr2Str(scan.Tag), util.Ptr2Str(scan.ExternalID))},
 	})
 
 	return count, *update.Status, err
@@ -465,34 +488,4 @@ func statusFromChecks(scanID uuid.UUID, checkStats map[string]int, n float32, l 
 		Status:   &status,
 		EndTime:  endTime,
 	}
-}
-
-func ptr2Str(p *string) string {
-	if p == nil {
-		return ""
-	}
-	return *p
-}
-
-// ptr2Float returns the value passed in if it isn't nil.
-// Returns 0 otherwise.
-func ptr2Float(val *float32) float32 {
-	if val == nil {
-		return 0
-	}
-	return *val
-}
-
-func ptr2Time(t *time.Time) time.Time {
-	if t == nil {
-		return time.Time{}
-	}
-	return *t
-}
-
-func ptr2Int(i *int) int {
-	if i == nil {
-		return 0
-	}
-	return *i
 }

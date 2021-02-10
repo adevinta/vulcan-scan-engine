@@ -11,6 +11,7 @@ import (
 
 	"github.com/adevinta/vulcan-scan-engine/pkg/queue"
 	"github.com/spf13/viper"
+	"github.mpi-internal.com/spt-security/vulcan-scan-engine/pkg/notify"
 )
 
 type serverConfig struct {
@@ -81,13 +82,13 @@ type checktypeQueueConfig struct {
 }
 
 type config struct {
-	Log    logConfig
-	Server serverConfig
-	DB     dbConfig
-	Vulcan checktypesInformer
-	SQS    queue.Config
-	// SNS           notify.Config
-	// SNSChecks     notify.Config      `mapstructure:"sns_checks"`
+	Log           logConfig
+	Server        serverConfig
+	DB            dbConfig
+	Vulcan        checktypesInformer
+	SQS           queue.Config
+	ScansSNS      notify.Config
+	ChecksSNS     notify.Config
 	ChecksCreator checkCreatorConfig `mapstructure:"check_creator"`
 	Metrics       metricsConfig
 }
