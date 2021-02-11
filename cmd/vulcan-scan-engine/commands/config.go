@@ -9,9 +9,9 @@ import (
 	"os"
 	"os/user"
 
+	"github.com/adevinta/vulcan-scan-engine/pkg/notify"
 	"github.com/adevinta/vulcan-scan-engine/pkg/queue"
 	"github.com/spf13/viper"
-	"github.mpi-internal.com/spt-security/vulcan-scan-engine/pkg/notify"
 )
 
 type serverConfig struct {
@@ -87,8 +87,8 @@ type config struct {
 	DB            dbConfig
 	Vulcan        checktypesInformer
 	SQS           queue.Config
-	ScansSNS      notify.Config
-	ChecksSNS     notify.Config
+	ScansSNS      notify.Config      `mapstructure:"scans_sns"`
+	ChecksSNS     notify.Config      `mapstructure:"checks_sns"`
 	ChecksCreator checkCreatorConfig `mapstructure:"check_creator"`
 	Metrics       metricsConfig
 }
