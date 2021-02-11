@@ -131,6 +131,7 @@ func startServer() error {
 		if err != nil {
 			return err
 		}
+		logger.Log(fmt.Sprintf("Using queues: %v", ctqConfig))
 	}
 
 	wd, err := os.Getwd()
