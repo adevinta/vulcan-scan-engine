@@ -42,8 +42,7 @@ type checkCreatorConfig struct {
 }
 
 type checktypesQueuesConfig struct {
-	SendToAgents bool                   `yaml:"sendToAgents"`
-	Queues       []checktypeQueueConfig `yaml:"queues"` // ARNs of agent queues
+	Queues []checktypeQueueConfig `yaml:"queues"` // ARNs of agent queues
 }
 
 // ARNs returns map with the following shape: ["queuename":"arn1"]

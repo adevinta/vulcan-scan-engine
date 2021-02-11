@@ -299,7 +299,7 @@ func (s ScansService) ProcessScanCheckNotification(ctx context.Context, msg []by
 		_ = level.Debug(s.logger).Log("ScanStatusSet", scanID.String()+";"+scanState)
 	}
 
-	// Rely check message
+	// Propagate check message
 	err = s.notifyCheck(checkID)
 	if err != nil {
 		return err
