@@ -12,7 +12,6 @@ migrations_subdir = ""
 [vulcan]
 schema = "http"
 host = "$PERSISTENCE_HOST"
-enable_async_creation = $ASYNC_CHECK_CREATION
 
 [sqs]
 disabled = false
@@ -24,22 +23,20 @@ timeout = 30
 queue_arn = "$SQS_QUEUE_ARN"
 endpoint = "$AWS_SQS_ENDPOINT"
 
-[sns]
-topic_arn = "$SNS_TOPIC_ARN"
+[scans_sns]
+topic_arn = "$AWS_SNS_SCANS_ARN"
+endpoint = "$AWS_SNS_SCANS_ENDPOINT"
 enabled = true
-endpoint = "$AWS_SNS_ENDPOINT"
+
+[checks_sns]
+topic_arn = "$AWS_SNS_CHECKS_ARN"
+endpoint = "$AWS_SNS_CHECKS_ENDPOINT"
+enabled = true
 
 [metrics]
 enabled = $DOGSTATSD_ENABLED
-
-[sns_checks]
-topic_arn = "$AWS_SNS_CHECKS_ARN"
 
 [check_creator]
 num_of_workers = $AWS_CHECK_CREATOR_WORKERS
 # in seconds.
 period =  $AWS_CHECK_CREATOR_PERIOD
-
-# Enable the creation of the checks directly to the agent queue. If the
-# AWS_CHECK_CREATOR_SEND_TO_AGENTS is not set use false as default option.
-send_to_agents = $AWS_CHECK_CREATOR_SEND_TO_AGENTS
