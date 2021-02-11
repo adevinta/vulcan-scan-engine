@@ -61,6 +61,7 @@ type fakeScansPersistence struct {
 	ScanBYExternalIDGetter  func(ID string, limit *uint32) ([]api.Scan, error)
 	ScanChecksRemover       func(scanID uuid.UUID) error
 	ScanIDForCheckGetter    func(ID uuid.UUID) (uuid.UUID, error)
+	CheckGetter             func(id uuid.UUID) (api.Check, error)
 }
 
 func (f fakeScansPersistence) CreateScan(id uuid.UUID, scan api.Scan) (int64, error) {
@@ -101,6 +102,10 @@ func (f fakeScansPersistence) DeleteScanChecks(scanID uuid.UUID) error {
 
 func (f fakeScansPersistence) GetScanIDForCheck(ID uuid.UUID) (uuid.UUID, error) {
 	return f.ScanIDForCheckGetter(ID)
+}
+
+func (f fakeScansPersistence) GetCheckByID(id uuid.UUID) (api.Check, error) {
+	return f.CheckGetter(id)
 }
 
 type inMemoryAssettypeInformer struct {
