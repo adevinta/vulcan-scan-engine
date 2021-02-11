@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/user"
 
+	"github.com/adevinta/vulcan-scan-engine/pkg/notify"
 	"github.com/adevinta/vulcan-scan-engine/pkg/queue"
 	"github.com/spf13/viper"
 )
@@ -41,8 +42,7 @@ type checkCreatorConfig struct {
 }
 
 type checktypesQueuesConfig struct {
-	SendToAgents bool                   `yaml:"sendToAgents"`
-	Queues       []checktypeQueueConfig `yaml:"queues"` // ARNs of agent queues
+	Queues []checktypeQueueConfig `yaml:"queues"` // ARNs of agent queues
 }
 
 // ARNs returns map with the following shape: ["queuename":"arn1"]
@@ -81,13 +81,13 @@ type checktypeQueueConfig struct {
 }
 
 type config struct {
-	Log    logConfig
-	Server serverConfig
-	DB     dbConfig
-	Vulcan checktypesInformer
-	SQS    queue.Config
-	// SNS           notify.Config
-	// SNSChecks     notify.Config      `mapstructure:"sns_checks"`
+	Log           logConfig
+	Server        serverConfig
+	DB            dbConfig
+	Vulcan        checktypesInformer
+	SQS           queue.Config
+	ScansSNS      notify.Config      `mapstructure:"scans_sns"`
+	ChecksSNS     notify.Config      `mapstructure:"checks_sns"`
 	ChecksCreator checkCreatorConfig `mapstructure:"check_creator"`
 	Metrics       metricsConfig
 }

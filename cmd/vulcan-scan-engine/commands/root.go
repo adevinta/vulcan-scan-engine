@@ -35,6 +35,7 @@ import (
 	"github.com/adevinta/vulcan-scan-engine/pkg/api/service"
 	"github.com/adevinta/vulcan-scan-engine/pkg/api/transport"
 	checkmetrics "github.com/adevinta/vulcan-scan-engine/pkg/metrics"
+	"github.com/adevinta/vulcan-scan-engine/pkg/notify"
 	"github.com/adevinta/vulcan-scan-engine/pkg/queue"
 	"github.com/adevinta/vulcan-scan-engine/pkg/scans"
 	"github.com/adevinta/vulcan-scan-engine/pkg/scheduler"
@@ -151,7 +152,6 @@ func startServer() error {
 		return err
 	}
 	st := persistence.NewPersistence(db)
-	mux := http.NewServeMux()
 
 	apiClient := newVulcanCoreAPIClient(cfg.Vulcan)
 
@@ -161,6 +161,15 @@ func startServer() error {
 	}
 
 	checkMetrics := &checkmetrics.Checks{Client: metricsClient}
+
+	scansNotifier, err := notify.NewSNSNotifier(cfg.ScansSNS, logger)
+	if err != nil {
+		return err
+	}
+	checksNotifier, err := notify.NewSNSNotifier(cfg.ChecksSNS, logger)
+	if err != nil {
+		return err
+	}
 
 	var (
 		creator interface {
@@ -195,7 +204,7 @@ func startServer() error {
 		sch.AddTask(t, p)
 	}
 
-	scanService := service.New(logger, st, apiClient, metricsClient, creator)
+	scanService := service.New(logger, st, apiClient, metricsClient, creator, scansNotifier, checksNotifier)
 
 	healthCheckService := service.HealthcheckService{
 		DB: db,
@@ -218,6 +227,7 @@ func startServer() error {
 		addMetricsMiddleware(endpoints, metricsClient)
 	}
 
+	mux := http.NewServeMux()
 	handlers := transport.AttachRoutes(transport.MakeHandlers(endpoints, logger))
 	mux.Handle("/v1/", handlers)
 	http.Handle("/", mux)

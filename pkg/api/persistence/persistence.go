@@ -17,6 +17,7 @@ type ScansStore interface {
 	GetScanByID(id uuid.UUID) (api.Scan, error)
 	UpdateScan(id uuid.UUID, scan api.Scan, updateStates []string) (int64, error)
 	GetScansByExternalIDWithLimit(ID string, limit *uint32) ([]api.Scan, error)
+	GetCheckByID(id uuid.UUID) (api.Check, error)
 	GetChecksStatusStats(scanID uuid.UUID) (map[string]int, error)
 	DeleteScanChecks(scanID uuid.UUID) error
 	GetScanIDForCheck(ID uuid.UUID) (uuid.UUID, error)
@@ -141,6 +142,13 @@ func (db Persistence) GetScanChecks(scanID uuid.UUID) ([]api.Check, error) {
 // DeleteScanChecks deletes all the checks of a given scan.
 func (db Persistence) DeleteScanChecks(scanID uuid.UUID) error {
 	return db.store.DeleteChildDocuments(scanID, api.Check{})
+}
+
+// GetCheckByID returns the check for the given ID.
+func (db Persistence) GetCheckByID(id uuid.UUID) (api.Check, error) {
+	c := api.Check{}
+	err := db.store.GetDocByIDFromDocType(&c, id)
+	return c, err
 }
 
 // GetChecksStatusStats the number of checks belonging to a scan that are in a
