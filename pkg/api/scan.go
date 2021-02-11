@@ -98,20 +98,20 @@ type Check struct {
 
 // CheckNotification represents the data of a check sent to an SNS topic.
 type CheckNotification struct {
-	ID            string   `json:"id"`
-	Status        string   `json:"status"`
-	ScanID        string   `json:"scan_id"`
-	Target        string   `json:"target"`
-	Progress      *float32 `json:"progress,omitempty"`
-	AgentID       *string  `json:"agent_id,omitempty"`
-	ChecktypeID   *string  `json:"checktype_id,omitempty"`
-	ChecktypeName *string  `json:"checktype_name,omitempty"`
-	Options       *string  `json:"options,omitempty"`
-	WebHook       *string  `json:"webhook,omitempty"`
-	Report        *string  `json:"report,omitempty"`
-	Raw           *string  `json:"raw,omitempty"`
-	QueueName     *string  `json:"queue_name,omitempty"`
-	Tag           *string  `json:"tag,omitempty"`
+	ID            string  `json:"id"`
+	Status        string  `json:"status"`
+	ScanID        string  `json:"scan_id"`
+	Target        string  `json:"target"`
+	Progress      float32 `json:"progress,omitempty"`
+	AgentID       string  `json:"agent_id,omitempty"`
+	ChecktypeID   string  `json:"checktype_id,omitempty"`
+	ChecktypeName string  `json:"checktype_name,omitempty"`
+	Options       string  `json:"options,omitempty"`
+	WebHook       string  `json:"webhook,omitempty"`
+	Report        string  `json:"report,omitempty"`
+	Raw           string  `json:"raw,omitempty"`
+	QueueName     string  `json:"queue_name,omitempty"`
+	Tag           string  `json:"tag,omitempty"`
 }
 
 // ToCheckNotification returns a CheckNotification from a Check.
@@ -121,16 +121,16 @@ func (c Check) ToCheckNotification() CheckNotification {
 		Status:        c.Status,
 		ScanID:        c.ScanID,
 		Target:        c.Target,
-		Progress:      c.Progress,
-		AgentID:       c.AgentID,
-		ChecktypeID:   c.ChecktypeID,
-		ChecktypeName: c.ChecktypeName,
-		Options:       c.Options,
-		WebHook:       c.WebHook,
-		Report:        c.Report,
-		Raw:           c.Raw,
-		QueueName:     c.QueueName,
-		Tag:           c.Tag,
+		Progress:      util.Ptr2Float(c.Progress),
+		AgentID:       util.Ptr2Str(c.AgentID),
+		ChecktypeID:   util.Ptr2Str(c.ChecktypeID),
+		ChecktypeName: util.Ptr2Str(c.ChecktypeName),
+		Options:       util.Ptr2Str(c.Options),
+		WebHook:       util.Ptr2Str(c.WebHook),
+		Report:        util.Ptr2Str(c.Report),
+		Raw:           util.Ptr2Str(c.Raw),
+		QueueName:     util.Ptr2Str(c.QueueName),
+		Tag:           util.Ptr2Str(c.Tag),
 	}
 }
 
