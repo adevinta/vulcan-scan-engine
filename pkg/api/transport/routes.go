@@ -18,6 +18,7 @@ func AttachRoutes(handlers *Handlers) http.Handler {
 
 	// Scans
 	r.Methods("POST").Path("/v1/scans").Handler(handlers.CreateScan)
+	r.Methods("GET").Path("/v1/scans").Handler(handlers.ListScans)
 	r.Methods("GET").Path("/v1/scans/").Queries("external_id", "{external_id}").Handler(handlers.GetScanByExternalID)
 	r.Methods("GET").Path("/v1/scans/{id}").Handler(handlers.GetScan)
 	r.Methods("GET").Path("/v1/scans/{id}/checks").Handler(handlers.GetScanChecks)

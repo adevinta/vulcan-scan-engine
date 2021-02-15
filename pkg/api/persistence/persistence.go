@@ -13,6 +13,7 @@ import (
 type ScansStore interface {
 	CreateScan(id uuid.UUID, scan api.Scan) (int64, error)
 	UpsertCheck(scanID, id uuid.UUID, check api.Check, updateStates []string) (int64, error)
+	GetScans() ([]api.Scan, error)
 	GetScanChecks(scanID uuid.UUID) ([]api.Check, error)
 	GetScanByID(id uuid.UUID) (api.Scan, error)
 	UpdateScan(id uuid.UUID, scan api.Scan, updateStates []string) (int64, error)
@@ -111,6 +112,24 @@ func (db Persistence) UpsertCheck(scanID, id uuid.UUID, check api.Check, updateS
 	}
 
 	return db.store.UpsertChildDocumentWithData(scanID, id, check, check.Data, condition, args...)
+}
+
+// GetScans returns the list of scans.
+func (db Persistence) GetScans() ([]api.Scan, error) {
+	datas, err := db.store.GetAllDocsFromDocType(api.Scan{})
+	if err != nil {
+		return []api.Scan{}, err
+	}
+	res := []api.Scan{}
+	for _, v := range datas {
+		c := api.Scan{}
+		err := json.Unmarshal(v, &c)
+		if err != nil {
+			return []api.Scan{}, err
+		}
+		res = append(res, c)
+	}
+	return res, nil
 }
 
 // GetScanByID returns a scan given its ID.

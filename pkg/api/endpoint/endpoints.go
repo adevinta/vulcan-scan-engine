@@ -22,6 +22,7 @@ type ScanEngineService interface {
 type Endpoints struct {
 	Healthcheck         endpoint.Endpoint
 	CreateScan          endpoint.Endpoint
+	ListScans           endpoint.Endpoint
 	GetScan             endpoint.Endpoint
 	GetScanByExternalID endpoint.Endpoint
 	GetScanChecks       endpoint.Endpoint
@@ -33,6 +34,7 @@ func MakeEndpoints(s ScanEngineService) *Endpoints {
 	return &Endpoints{
 		Healthcheck:         makeHealthcheckEndpoint(s),
 		CreateScan:          makeCreateScanEndpoint(s),
+		ListScans:           makeListScansEndpoint(s),
 		GetScan:             makeGetScanEndpoint(s),
 		GetScanByExternalID: makeGetScanByExternalIDEndpoint(s),
 		GetScanChecks:       makeGetScanChecksEndpoint(s),

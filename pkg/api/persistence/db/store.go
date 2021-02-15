@@ -262,6 +262,28 @@ func (db DB) GetChildDocsStatsForField(table, field string, parentID uuid.UUID) 
 	return stats, nil
 }
 
+// GetAllDocs gets all documents for a given table.
+func (db DB) GetAllDocs(table string) ([][]byte, error) {
+	strExec := `SELECT data FROM %s`
+	st := fmt.Sprintf(strExec, table)
+	st = db.db.Rebind(st)
+	res, err := db.db.Query(st)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Close() // nolint
+	datas := [][]byte{}
+	for res.Next() {
+		data := []byte{}
+		err = res.Scan(&data)
+		if err != nil {
+			return [][]byte{}, err
+		}
+		datas = append(datas, data)
+	}
+	return datas, err
+}
+
 // GetChildDocs gets all the child documents of a given parent.
 func (db DB) GetChildDocs(table string, parentID uuid.UUID) ([][]byte, error) {
 	strExec := `SELECT data FROM %s WHERE parent_id = ?`
@@ -499,6 +521,16 @@ func (db DB) UpsertChildDocumentWithData(parentID, id uuid.UUID, doc interface{}
 	tableName = tableName + "s"
 	tableName = strings.ToLower(tableName)
 	return db.UpsertChildDocWithCondition(tableName, parentID, id, data, condition, args...)
+}
+
+// GetAllDocsFromDocType returns the list of docs for the given doc type.
+func (db DB) GetAllDocsFromDocType(doc interface{}) ([][]byte, error) {
+	val := reflect.ValueOf(doc)
+	tableName := reflect.Indirect(val).Type().Name()
+	// By convention the name of the type is the singular form of the table's name in lower case.
+	tableName = tableName + "s"
+	tableName = strings.ToLower(tableName)
+	return db.GetAllDocs(tableName)
 }
 
 // GetDocByIDFromDocType returns a document given its id.

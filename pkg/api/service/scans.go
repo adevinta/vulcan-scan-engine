@@ -90,6 +90,11 @@ func New(logger log.Logger, db persistence.ScansStore, client ChecktypesInformer
 
 }
 
+// ListScans returns the list of scans.
+func (s ScansService) ListScans(ctx context.Context) ([]api.Scan, error) {
+	return s.db.GetScans()
+}
+
 // GetScan returns the scan corresponding with a given id.
 func (s ScansService) GetScan(ctx context.Context, scanID string) (api.Scan, error) {
 	id, err := uuid.FromString(scanID)

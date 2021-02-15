@@ -24,6 +24,7 @@ type ScanCreator interface {
 
 // ScanGetter defines the service interface required by the endpoint GetScan
 type ScanGetter interface {
+	ListScans(ctx context.Context) ([]api.Scan, error)
 	GetScan(ctx context.Context, scanID string) (api.Scan, error)
 	GetScanChecks(ctx context.Context, scanID string) ([]api.Check, error)
 	GetScansByExternalID(ctx context.Context, ID string, all bool) ([]api.Scan, error)
@@ -119,6 +120,20 @@ func makeCreateScanEndpoint(s ScanCreator) endpoint.Endpoint {
 	}
 }
 
+func makeListScansEndpoint(s ScanGetter) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
+		scans, err := s.ListScans(ctx)
+		if err != nil {
+			return nil, err
+		}
+		resp, err := buildGetScansResponse(scans)
+		if err != nil {
+			return nil, err
+		}
+		return Ok{resp}, nil
+	}
+}
+
 func makeGetScanEndpoint(s ScanGetter) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
 		requestBody, ok := request.(*ScanRequest)
@@ -130,7 +145,7 @@ func makeGetScanEndpoint(s ScanGetter) endpoint.Endpoint {
 		if err != nil {
 			return nil, err
 		}
-		resp, err := buildScanResponse(scan)
+		resp, err := buildGetScanResponse(scan)
 		if err != nil {
 			return nil, err
 		}
@@ -182,7 +197,7 @@ func makeGetScanByExternalIDEndpoint(s ScanGetter) endpoint.Endpoint {
 		if err != nil {
 			return nil, err
 		}
-		resp, err := buildScanByExternalIDResponse(scans)
+		resp, err := buildGetScansResponse(scans)
 		if err != nil {
 			return nil, err
 		}
@@ -190,7 +205,7 @@ func makeGetScanByExternalIDEndpoint(s ScanGetter) endpoint.Endpoint {
 	}
 }
 
-func buildScanResponse(scan api.Scan) (GetScanResponse, error) {
+func buildGetScanResponse(scan api.Scan) (GetScanResponse, error) {
 	// The field StartTime is mandatory
 	if scan.StartTime == nil {
 		return GetScanResponse{}, errors.Default(fmt.Sprintf("scan start time is nil for scan %s", scan.ID.String()))
@@ -222,12 +237,12 @@ func buildScanResponse(scan api.Scan) (GetScanResponse, error) {
 	return resp, nil
 }
 
-func buildScanByExternalIDResponse(scans []api.Scan) (GetScansResponse, error) {
+func buildGetScansResponse(scans []api.Scan) (GetScansResponse, error) {
 	scansInfo := GetScansResponse{
 		Scans: []GetScanResponse{},
 	}
 	for _, s := range scans {
-		resp, err := buildScanResponse(s)
+		resp, err := buildGetScanResponse(s)
 		if err != nil {
 			return GetScansResponse{}, err
 		}
