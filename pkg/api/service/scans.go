@@ -91,10 +91,10 @@ func New(logger log.Logger, db persistence.ScansStore, client ChecktypesInformer
 }
 
 // GetScan returns the scan corresponding with a given id.
-func (s ScansService) GetScan(ctx context.Context, strID string) (api.Scan, error) {
-	id, err := uuid.FromString(strID)
+func (s ScansService) GetScan(ctx context.Context, scanID string) (api.Scan, error) {
+	id, err := uuid.FromString(scanID)
 	if err != nil {
-		return api.Scan{}, errors.Assertion(fmt.Sprintf("not valid scan ID %s", strID))
+		return api.Scan{}, errors.Assertion(fmt.Sprintf("not valid scan ID %s", scanID))
 	}
 	scan, err := s.db.GetScanByID(id)
 	if err != nil {
@@ -103,11 +103,24 @@ func (s ScansService) GetScan(ctx context.Context, strID string) (api.Scan, erro
 	return scan, nil
 }
 
-// AbortScan is called in order to signal the vulcan core to try to abort and on going scan.
-func (s ScansService) AbortScan(ctx context.Context, strID string) error {
-	id, err := uuid.FromString(strID)
+// GetScanChecks returns the checks for the scan with the given id.
+func (s ScansService) GetScanChecks(ctx context.Context, scanID string) ([]api.Check, error) {
+	id, err := uuid.FromString(scanID)
 	if err != nil {
-		return errors.Assertion(fmt.Sprintf("not valid scan ID %s", strID))
+		return []api.Check{}, errors.Assertion(fmt.Sprintf("not valid scan ID %s", scanID))
+	}
+	checks, err := s.db.GetScanChecks(id)
+	if err != nil {
+		return []api.Check{}, err
+	}
+	return checks, nil
+}
+
+// AbortScan is called in order to signal the vulcan core to try to abort and on going scan.
+func (s ScansService) AbortScan(ctx context.Context, scanID string) error {
+	id, err := uuid.FromString(scanID)
+	if err != nil {
+		return errors.Assertion(fmt.Sprintf("not valid scan ID %s", scanID))
 	}
 	_, err = s.db.GetScanByID(id)
 	if err != nil {

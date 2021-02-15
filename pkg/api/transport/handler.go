@@ -32,8 +32,9 @@ type Handlers struct {
 	Healthcheck         http.Handler
 	CreateScan          http.Handler
 	GetScan             http.Handler
-	AbortScan           http.Handler
 	GetScanByExternalID http.Handler
+	GetScanChecks       http.Handler
+	AbortScan           http.Handler
 }
 
 // MakeHandlers returns initialized handlers
@@ -72,8 +73,9 @@ func MakeHandlers(e *endpoint.Endpoints, logger kitlog.Logger) *Handlers {
 		Healthcheck:         newServer(e.Healthcheck, makeDecodeRequestFunc(struct{}{}), "Healthcheck"),
 		CreateScan:          newServer(e.CreateScan, makeDecodeRequestFunc(endpoint.ScanRequest{}), "CreateScan"),
 		GetScan:             newServer(e.GetScan, makeDecodeRequestFunc(endpoint.ScanRequest{}), "GetScan"),
-		AbortScan:           newServer(e.AbortScan, makeDecodeRequestFunc(endpoint.ScanRequest{}), "AbortScan"),
 		GetScanByExternalID: newServer(e.GetScanByExternalID, makeDecodeRequestFunc(endpoint.ScanRequest{}), "GetScanByExternalID"),
+		GetScanChecks:       newServer(e.GetScanChecks, makeDecodeRequestFunc(endpoint.ScanRequest{}), "GetScanChecks"),
+		AbortScan:           newServer(e.AbortScan, makeDecodeRequestFunc(endpoint.ScanRequest{}), "AbortScan"),
 	}
 }
 

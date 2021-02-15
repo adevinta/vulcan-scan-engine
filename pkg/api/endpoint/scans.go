@@ -14,6 +14,7 @@ import (
 
 	"github.com/adevinta/errors"
 	"github.com/adevinta/vulcan-scan-engine/pkg/api"
+	"github.com/adevinta/vulcan-scan-engine/pkg/util"
 )
 
 // ScanCreator defines the service interface required by the endpoint CreateScan
@@ -23,9 +24,10 @@ type ScanCreator interface {
 
 // ScanGetter defines the service interface required by the endpoint GetScan
 type ScanGetter interface {
-	GetScan(ctx context.Context, strID string) (api.Scan, error)
+	GetScan(ctx context.Context, scanID string) (api.Scan, error)
+	GetScanChecks(ctx context.Context, scanID string) ([]api.Check, error)
 	GetScansByExternalID(ctx context.Context, ID string, all bool) ([]api.Scan, error)
-	AbortScan(ctx context.Context, strID string) error
+	AbortScan(ctx context.Context, scanID string) error
 }
 
 // ScanRequest defines the request accepted by CreateScan endpoint.
@@ -43,17 +45,20 @@ type ScanRequest struct {
 	Tag             string                       `json:"tag,omitempty"`
 }
 
-// ScanResponse ...
+// ScanResponse represents the response
+// for a scan creation request.
 type ScanResponse struct {
 	ScanID string `json:"scan_id"`
 }
 
-// GetScansResponse ...
+// GetScansResponse represents the response
+// for a list scans request.
 type GetScansResponse struct {
 	Scans []GetScanResponse `json:"scans"`
 }
 
-// GetScanResponse  ...
+// GetScanResponse represents the response
+// for a get scan request.
 type GetScanResponse struct {
 	ID            string     `json:"id"`
 	ExternalID    string     `json:"external_id"`
@@ -65,20 +70,28 @@ type GetScanResponse struct {
 	Progress      *float32   `json:"progress"`
 	CheckCount    *int       `json:"check_count"`
 	ChecksCreated *int       `json:"checks_created"`
+	AbortedAt     *time.Time `json:"aborted_at,omitempty"`
 }
 
-// Check Represents the data send for each check belonging to a scan.
-type Check struct {
-	ChecktypeID string    `json:"checktype_id"`
-	ID          uuid.UUID `json:"id"`
-	Options     string    `json:"options"`
-	Progress    float64   `json:"progress"`
-	Raw         string    `json:"raw"`
-	Report      string    `json:"report"`
-	ScanID      string    `json:"scan_id"`
-	Status      string    `json:"status"`
-	Target      string    `json:"target"`
-	Webhook     string    `json:"webhook"`
+// GetCheckResponse represents the response
+// for a get check request.
+type GetCheckResponse struct {
+	ID            string `json:"id"`
+	Status        string `json:"status"`
+	Target        string `json:"target"`
+	ChecktypeName string `json:"checktype_name,omitempty"`
+	Image         string `json:"image,omitempty"`
+	Options       string `json:"options,omitempty"`
+	Report        string `json:"report,omitempty"`
+	Raw           string `json:"raw,omitempty"`
+	Tag           string `json:"tag,omitempty"`
+	Assettype     string `json:"assettype,omitempty"`
+}
+
+// GetChecksResponse represents the response
+// for a get scan checks request.
+type GetChecksResponse struct {
+	Checks []GetCheckResponse `json:"checks"`
 }
 
 func makeCreateScanEndpoint(s ScanCreator) endpoint.Endpoint {
@@ -117,7 +130,26 @@ func makeGetScanEndpoint(s ScanGetter) endpoint.Endpoint {
 		if err != nil {
 			return nil, err
 		}
-		resp, err := BuildScanResponse(scan)
+		resp, err := buildScanResponse(scan)
+		if err != nil {
+			return nil, err
+		}
+		return Ok{resp}, nil
+	}
+}
+
+func makeGetScanChecksEndpoint(s ScanGetter) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
+		requestBody, ok := request.(*ScanRequest)
+		if !ok {
+			return nil, errors.Assertion("Type assertion failed")
+		}
+
+		checks, err := s.GetScanChecks(ctx, requestBody.ID)
+		if err != nil {
+			return nil, err
+		}
+		resp, err := buildChecksResponse(checks)
 		if err != nil {
 			return nil, err
 		}
@@ -150,7 +182,7 @@ func makeGetScanByExternalIDEndpoint(s ScanGetter) endpoint.Endpoint {
 		if err != nil {
 			return nil, err
 		}
-		resp, err := BuildScanByExternalIDResponse(scans)
+		resp, err := buildScanByExternalIDResponse(scans)
 		if err != nil {
 			return nil, err
 		}
@@ -158,8 +190,7 @@ func makeGetScanByExternalIDEndpoint(s ScanGetter) endpoint.Endpoint {
 	}
 }
 
-// BuildScanResponse Builds a scan response from information regarding a scan.
-func BuildScanResponse(scan api.Scan) (GetScanResponse, error) {
+func buildScanResponse(scan api.Scan) (GetScanResponse, error) {
 	// The field StartTime is mandatory
 	if scan.StartTime == nil {
 		return GetScanResponse{}, errors.Default(fmt.Sprintf("scan start time is nil for scan %s", scan.ID.String()))
@@ -186,22 +217,42 @@ func BuildScanResponse(scan api.Scan) (GetScanResponse, error) {
 		Progress:      scan.Progress,
 		CheckCount:    scan.CheckCount,
 		ChecksCreated: scan.ChecksCreated,
+		AbortedAt:     scan.AbortedAt,
 	}
 	return resp, nil
 }
 
-// BuildScanByExternalIDResponse returns an slice of Scans responses given a list of scans and its corresponding
-// checks.
-func BuildScanByExternalIDResponse(scans []api.Scan) (GetScansResponse, error) {
+func buildScanByExternalIDResponse(scans []api.Scan) (GetScansResponse, error) {
 	scansInfo := GetScansResponse{
 		Scans: []GetScanResponse{},
 	}
 	for _, s := range scans {
-		resp, err := BuildScanResponse(s)
+		resp, err := buildScanResponse(s)
 		if err != nil {
 			return GetScansResponse{}, err
 		}
 		scansInfo.Scans = append(scansInfo.Scans, resp)
 	}
 	return scansInfo, nil
+}
+
+func buildChecksResponse(checks []api.Check) (GetChecksResponse, error) {
+	checksResp := GetChecksResponse{
+		Checks: []GetCheckResponse{},
+	}
+	for _, c := range checks {
+		checksResp.Checks = append(checksResp.Checks, GetCheckResponse{
+			ID:            c.ID,
+			Status:        c.Status,
+			Target:        c.Target,
+			ChecktypeName: util.Ptr2Str(c.ChecktypeName),
+			Image:         util.Ptr2Str(c.Image),
+			Options:       util.Ptr2Str(c.Options),
+			Report:        util.Ptr2Str(c.Report),
+			Raw:           util.Ptr2Str(c.Raw),
+			Tag:           util.Ptr2Str(c.Tag),
+			Assettype:     util.Ptr2Str(c.Assettype),
+		})
+	}
+	return checksResp, nil
 }

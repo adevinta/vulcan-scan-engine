@@ -35,6 +35,7 @@ type Scan struct {
 	TargetGroups    *[]TargetsChecktypesGroup `json:"target_groups,omitempty"`
 	Tag             *string                   `json:"tag,omitempty"`
 	CheckCount      *int                      `json:"check_count,omitempty"`
+	AbortedAt       *time.Time                `json:"aborted_at,omitempty"`
 
 	LastTargetCheckGCreated *int                           `json:"last_target_check_g_created,omitempty"`
 	LastCheckCreated        *int                           `json:"last_check_created,omitempty"`
