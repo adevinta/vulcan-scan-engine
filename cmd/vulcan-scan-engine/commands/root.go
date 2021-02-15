@@ -290,8 +290,8 @@ func addMetricsMiddleware(endpoints *endpoint.Endpoints, metricsClient metrics.C
 	withMetrics := metricsMiddleware.Measure()
 
 	endpoints.CreateScan = withMetrics(endpoints.CreateScan)
+	endpoints.ListScans = withMetrics(endpoints.ListScans)
 	endpoints.GetScan = withMetrics(endpoints.GetScan)
-	endpoints.GetScanByExternalID = withMetrics(endpoints.GetScanByExternalID)
 	endpoints.AbortScan = withMetrics(endpoints.AbortScan)
 }
 
@@ -299,8 +299,8 @@ func addLoggingMiddleware(endpoints *endpoint.Endpoints, logger log.Logger) {
 	withLog := middleware.Logging(logger)
 
 	endpoints.CreateScan = withLog(endpoints.CreateScan)
+	endpoints.ListScans = withLog(endpoints.ListScans)
 	endpoints.GetScan = withLog(endpoints.GetScan)
-	endpoints.GetScanByExternalID = withLog(endpoints.GetScanByExternalID)
 	endpoints.AbortScan = withLog(endpoints.AbortScan)
 }
 

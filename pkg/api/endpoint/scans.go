@@ -122,10 +122,22 @@ func makeCreateScanEndpoint(s ScanCreator) endpoint.Endpoint {
 
 func makeListScansEndpoint(s ScanGetter) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
-		scans, err := s.ListScans(ctx)
+		req, ok := request.(*ScanRequest)
+		if !ok {
+			return nil, errors.Assertion("Type assertion failed")
+		}
+		all := req.All == "true"
+
+		var scans []api.Scan
+		if req.ExternalID == "" {
+			scans, err = s.ListScans(ctx)
+		} else {
+			scans, err = s.GetScansByExternalID(ctx, req.ExternalID, all)
+		}
 		if err != nil {
 			return nil, err
 		}
+
 		resp, err := buildGetScansResponse(scans)
 		if err != nil {
 			return nil, err
@@ -183,25 +195,6 @@ func makeAbortScanEndpoint(s ScanGetter) endpoint.Endpoint {
 			return nil, err
 		}
 		return Accepted{}, nil
-	}
-}
-
-func makeGetScanByExternalIDEndpoint(s ScanGetter) endpoint.Endpoint {
-	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
-		requestBody, ok := request.(*ScanRequest)
-		if !ok {
-			return nil, errors.Assertion("Type assertion failed")
-		}
-		all := requestBody.All == "true"
-		scans, err := s.GetScansByExternalID(ctx, requestBody.ExternalID, all)
-		if err != nil {
-			return nil, err
-		}
-		resp, err := buildGetScansResponse(scans)
-		if err != nil {
-			return nil, err
-		}
-		return Ok{resp}, nil
 	}
 }
 

@@ -29,13 +29,12 @@ const (
 
 // Handlers contains all available handlers for this api
 type Handlers struct {
-	Healthcheck         http.Handler
-	CreateScan          http.Handler
-	ListScans           http.Handler
-	GetScan             http.Handler
-	GetScanByExternalID http.Handler
-	GetScanChecks       http.Handler
-	AbortScan           http.Handler
+	Healthcheck   http.Handler
+	CreateScan    http.Handler
+	ListScans     http.Handler
+	GetScan       http.Handler
+	GetScanChecks http.Handler
+	AbortScan     http.Handler
 }
 
 // MakeHandlers returns initialized handlers
@@ -71,13 +70,12 @@ func MakeHandlers(e *endpoint.Endpoints, logger kitlog.Logger) *Handlers {
 	}
 
 	return &Handlers{
-		Healthcheck:         newServer(e.Healthcheck, makeDecodeRequestFunc(struct{}{}), "Healthcheck"),
-		CreateScan:          newServer(e.CreateScan, makeDecodeRequestFunc(endpoint.ScanRequest{}), "CreateScan"),
-		ListScans:           newServer(e.ListScans, makeDecodeRequestFunc(struct{}{}), "ListScans"),
-		GetScan:             newServer(e.GetScan, makeDecodeRequestFunc(endpoint.ScanRequest{}), "GetScan"),
-		GetScanByExternalID: newServer(e.GetScanByExternalID, makeDecodeRequestFunc(endpoint.ScanRequest{}), "GetScanByExternalID"),
-		GetScanChecks:       newServer(e.GetScanChecks, makeDecodeRequestFunc(endpoint.ScanRequest{}), "GetScanChecks"),
-		AbortScan:           newServer(e.AbortScan, makeDecodeRequestFunc(endpoint.ScanRequest{}), "AbortScan"),
+		Healthcheck:   newServer(e.Healthcheck, makeDecodeRequestFunc(struct{}{}), "Healthcheck"),
+		CreateScan:    newServer(e.CreateScan, makeDecodeRequestFunc(endpoint.ScanRequest{}), "CreateScan"),
+		ListScans:     newServer(e.ListScans, makeDecodeRequestFunc(endpoint.ScanRequest{}), "ListScans"),
+		GetScan:       newServer(e.GetScan, makeDecodeRequestFunc(endpoint.ScanRequest{}), "GetScan"),
+		GetScanChecks: newServer(e.GetScanChecks, makeDecodeRequestFunc(endpoint.ScanRequest{}), "GetScanChecks"),
+		AbortScan:     newServer(e.AbortScan, makeDecodeRequestFunc(endpoint.ScanRequest{}), "AbortScan"),
 	}
 }
 

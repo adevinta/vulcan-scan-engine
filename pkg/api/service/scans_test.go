@@ -56,6 +56,7 @@ type fakeScansPersistence struct {
 	CheckUpsert             func(scanID, id uuid.UUID, check api.Check, updateStates []string) (int64, error)
 	ScanCheckGetter         func(scanID uuid.UUID) ([]api.Check, error)
 	ChecksStatusStatsGetter func(scanID uuid.UUID) (map[string]int, error)
+	ScansGetter             func() ([]api.Scan, error)
 	ScanGetter              func(id uuid.UUID) (api.Scan, error)
 	ScanUpdater             func(id uuid.UUID, scan api.Scan, updateStates []string) (int64, error)
 	ScanBYExternalIDGetter  func(ID string, limit *uint32) ([]api.Scan, error)
@@ -72,6 +73,9 @@ func (f fakeScansPersistence) UpsertCheck(scanID, id uuid.UUID, check api.Check,
 }
 func (f fakeScansPersistence) GetScanChecks(scanID uuid.UUID) ([]api.Check, error) {
 	return f.ScanCheckGetter(scanID)
+}
+func (f fakeScansPersistence) GetScans() ([]api.Scan, error) {
+	return f.ScansGetter()
 }
 func (f fakeScansPersistence) GetScanByID(id uuid.UUID) (api.Scan, error) {
 	return f.ScanGetter(id)
@@ -132,6 +136,15 @@ func newInMemoryStore(scans *sync.Map) inMemoryStore {
 			ScanCreator: func(id uuid.UUID, scan api.Scan) (int64, error) {
 				scans.Store(id, scan)
 				return 1, nil
+			},
+			ScansGetter: func() ([]api.Scan, error) {
+				snapshot := []api.Scan{}
+				scans.Range(func(k, v interface{}) bool {
+					current := v.(api.Scan)
+					snapshot = append(snapshot, current)
+					return true
+				})
+				return snapshot, nil
 			},
 			ScanGetter: func(id uuid.UUID) (api.Scan, error) {
 				s, ok := scans.Load(id)
