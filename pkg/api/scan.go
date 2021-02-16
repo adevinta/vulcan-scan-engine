@@ -135,6 +135,12 @@ func (c Check) ToCheckNotification() CheckNotification {
 	}
 }
 
+// CheckStats represents the stats for a check status.
+type CheckStats struct {
+	Status string `json:"status"`
+	Total  int    `json:"total"`
+}
+
 // TargetsChecktypesGroup defines a set of targets and the checktypes a scan
 // must run against them.
 type TargetsChecktypesGroup struct {

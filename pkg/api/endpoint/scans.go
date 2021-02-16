@@ -28,6 +28,7 @@ type ScanGetter interface {
 	GetScan(ctx context.Context, scanID string) (api.Scan, error)
 	GetScanChecks(ctx context.Context, scanID string) ([]api.Check, error)
 	GetScansByExternalID(ctx context.Context, ID string, offset, limit uint32) ([]api.Scan, error)
+	GetScanStats(ctx context.Context, scanID string) ([]api.CheckStats, error)
 	AbortScan(ctx context.Context, scanID string) error
 }
 
@@ -73,6 +74,12 @@ type GetScanResponse struct {
 	CheckCount    *int       `json:"check_count"`
 	ChecksCreated *int       `json:"checks_created"`
 	AbortedAt     *time.Time `json:"aborted_at,omitempty"`
+}
+
+// GetScanStatsResponse represents the response
+// for a get scan checks stats request.
+type GetScanStatsResponse struct {
+	Checks []api.CheckStats `json:"checks"`
 }
 
 // GetCheckResponse represents the response
@@ -193,6 +200,21 @@ func makeGetScanChecksEndpoint(s ScanGetter) endpoint.Endpoint {
 			return nil, err
 		}
 		return Ok{resp}, nil
+	}
+}
+
+func makeGetScanStatsEndpoint(s ScanGetter) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
+		requestBody, ok := request.(*ScanRequest)
+		if !ok {
+			return nil, errors.Assertion("Type assertion failed")
+		}
+
+		stats, err := s.GetScanStats(ctx, requestBody.ID)
+		if err != nil {
+			return nil, err
+		}
+		return Ok{GetScanStatsResponse{stats}}, nil
 	}
 }
 

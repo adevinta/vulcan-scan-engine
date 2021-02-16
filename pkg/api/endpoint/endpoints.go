@@ -25,6 +25,7 @@ type Endpoints struct {
 	ListScans     endpoint.Endpoint
 	GetScan       endpoint.Endpoint
 	GetScanChecks endpoint.Endpoint
+	GetScanStats  endpoint.Endpoint
 	AbortScan     endpoint.Endpoint
 }
 
@@ -36,6 +37,7 @@ func MakeEndpoints(s ScanEngineService) *Endpoints {
 		ListScans:     makeListScansEndpoint(s),
 		GetScan:       makeGetScanEndpoint(s),
 		GetScanChecks: makeGetScanChecksEndpoint(s),
+		GetScanStats:  makeGetScanStatsEndpoint(s),
 		AbortScan:     makeAbortScanEndpoint(s),
 	}
 }

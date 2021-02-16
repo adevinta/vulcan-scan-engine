@@ -121,6 +121,46 @@ func (s ScansService) GetScanChecks(ctx context.Context, scanID string) ([]api.C
 	return checks, nil
 }
 
+// GetScansByExternalID returns the scans that have the same external ids.
+func (s ScansService) GetScansByExternalID(ctx context.Context, ID string, offset, limit uint32) ([]api.Scan, error) {
+	scans, err := s.db.GetScansByExternalID(ID, offset, limit)
+	if err != nil {
+		return nil, err
+	}
+	return scans, nil
+}
+
+// GetScanStats returns the check states for the given scan ID.
+func (s ScansService) GetScanStats(ctx context.Context, scanID string) ([]api.CheckStats, error) {
+	id, err := uuid.FromString(scanID)
+	if err != nil {
+		return nil, errors.Assertion(fmt.Sprintf("not valid scan ID %s", scanID))
+	}
+	checks, err := s.db.GetScanChecks(id)
+	if err != nil {
+		return nil, err
+	}
+	stats := map[string]int{}
+	for _, c := range checks {
+		current, ok := stats[c.Status]
+		if ok {
+			stats[c.Status] = current + 1
+		} else {
+			stats[c.Status] = 1
+		}
+	}
+	var checkStats []api.CheckStats
+	for status, total := range stats {
+		if total > 0 {
+			checkStats = append(checkStats, api.CheckStats{
+				Status: status,
+				Total:  total,
+			})
+		}
+	}
+	return checkStats, nil
+}
+
 // AbortScan is called in order to signal the vulcan core to try to abort and on going scan.
 func (s ScansService) AbortScan(ctx context.Context, scanID string) error {
 	id, err := uuid.FromString(scanID)
@@ -134,15 +174,6 @@ func (s ScansService) AbortScan(ctx context.Context, scanID string) error {
 	// send a notification for canceling the checks of the scan through the stream.
 	// stream.Notify(checks(scan))
 	return ErrNotImplemented
-}
-
-// GetScansByExternalID returns the scans that have the same external ids.
-func (s ScansService) GetScansByExternalID(ctx context.Context, ID string, offset, limit uint32) ([]api.Scan, error) {
-	scans, err := s.db.GetScansByExternalID(ID, offset, limit)
-	if err != nil {
-		return nil, err
-	}
-	return scans, nil
 }
 
 func (s ScansService) CreateScan(ctx context.Context, scan *api.Scan) (uuid.UUID, error) {

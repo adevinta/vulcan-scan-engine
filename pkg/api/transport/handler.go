@@ -34,6 +34,7 @@ type Handlers struct {
 	ListScans     http.Handler
 	GetScan       http.Handler
 	GetScanChecks http.Handler
+	GetScanStats  http.Handler
 	AbortScan     http.Handler
 }
 
@@ -75,6 +76,7 @@ func MakeHandlers(e *endpoint.Endpoints, logger kitlog.Logger) *Handlers {
 		ListScans:     newServer(e.ListScans, makeDecodeRequestFunc(endpoint.ScanRequest{}), "ListScans"),
 		GetScan:       newServer(e.GetScan, makeDecodeRequestFunc(endpoint.ScanRequest{}), "GetScan"),
 		GetScanChecks: newServer(e.GetScanChecks, makeDecodeRequestFunc(endpoint.ScanRequest{}), "GetScanChecks"),
+		GetScanStats:  newServer(e.GetScanStats, makeDecodeRequestFunc(endpoint.ScanRequest{}), "GetScanStats"),
 		AbortScan:     newServer(e.AbortScan, makeDecodeRequestFunc(endpoint.ScanRequest{}), "AbortScan"),
 	}
 }
