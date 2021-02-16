@@ -16,10 +16,36 @@ produces:
   - application/json
 paths:
   /scans:
+    get:
+      tags:
+        - Scans
+      summary: List scans
+      description: List scans
+      operationId: Scans
+      produces:
+        - application/json
+      parameters:
+        - in: query
+          name: external_id
+          type: string
+          description: The external_id of the scans
+        - in: query
+          name: offset
+          type: integer
+          description: List offset
+        - in: query
+          name: limit
+          type: integer
+          description: List limit
+      responses:
+        "200":
+          description: ""
+          schema:
+            $ref: "#/definitions/ListScans"
     post:
       tags:
         - Scans
-      summary: ScansPost
+      summary: Create scan
       description: Create a scan
       operationId: ScansPost
       consumes: []
@@ -48,7 +74,7 @@ paths:
     get:
       tags:
         - Scans
-      summary: Get a scan given an ID
+      summary: Get a scan by ID
       description: A
       operationId: ScanByIDGet
       produces:
@@ -64,30 +90,11 @@ paths:
         in: path
         required: true
         type: string
-  /scans/:
-    get:
-      tags:
-        - Scans
-      summary: Gets the scans with a given external_id value
-      description: Gets scans with a given external_id value
-      operationId: ScansByExternalID
-      produces:
-        - application/json
-      parameters:
-        - in: query
-          name: external_id
-          type: string
-          description: The external_id of the scans
-      responses:
-        "200":
-          description: ""
-          schema:
-            $ref: "#/definitions/GetScanByExternalID"
   "/scans/{scan_id}/abort":
     post:
       tags:
         - Scans
-      summary: Aborts a scan given an ID
+      summary: Aborts a scan by ID
       description: ""
       operationId: AbortScan
       responses:
@@ -282,7 +289,7 @@ definitions:
       scan_id:
         type: string
     example: '{"scan_id":"8eafa7b8-2650-446c-bfc5-970d101eace1"}'
-  GetScanByExternalID:
+  ListScans:
     type: object
     properties:
       scans:

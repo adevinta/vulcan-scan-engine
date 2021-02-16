@@ -11,8 +11,6 @@ var (
 		[]string{"PURGING"},
 		[]string{"MALFORMED", "ABORTED", "KILLED", "FAILED", "FINISHED", "TIMEOUT", "INCONCLUSIVE"},
 	}
-	// ScansByExternalIDLimit the number of scans to return when querying by external id.
-	ScansByExternalIDLimit uint32 = 5
 )
 
 // states holds all prosibles states of a finite state machine

@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 
@@ -153,6 +154,14 @@ func EnsureDB(conn string) (bool, error) {
 		return false, err
 	}
 	return true, nil
+}
+
+func Str2Uint32(str string) (uint32, error) {
+	n, err := strconv.ParseUint(str, 10, 32)
+	if err != nil {
+		return 0, err
+	}
+	return uint32(n), nil
 }
 
 func Ptr2Str(p *string) string {

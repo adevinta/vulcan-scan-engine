@@ -91,8 +91,8 @@ func New(logger log.Logger, db persistence.ScansStore, client ChecktypesInformer
 }
 
 // ListScans returns the list of scans.
-func (s ScansService) ListScans(ctx context.Context) ([]api.Scan, error) {
-	return s.db.GetScans()
+func (s ScansService) ListScans(ctx context.Context, offset, limit uint32) ([]api.Scan, error) {
+	return s.db.GetScans(offset, limit)
 }
 
 // GetScan returns the scan corresponding with a given id.
@@ -137,12 +137,8 @@ func (s ScansService) AbortScan(ctx context.Context, scanID string) error {
 }
 
 // GetScansByExternalID returns the scans that have the same external ids.
-func (s ScansService) GetScansByExternalID(ctx context.Context, ID string, all bool) ([]api.Scan, error) {
-	var limit *uint32
-	if !all {
-		limit = &ScansByExternalIDLimit
-	}
-	scans, err := s.db.GetScansByExternalIDWithLimit(ID, limit)
+func (s ScansService) GetScansByExternalID(ctx context.Context, ID string, offset, limit uint32) ([]api.Scan, error) {
+	scans, err := s.db.GetScansByExternalID(ID, offset, limit)
 	if err != nil {
 		return nil, err
 	}

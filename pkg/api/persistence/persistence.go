@@ -13,11 +13,11 @@ import (
 type ScansStore interface {
 	CreateScan(id uuid.UUID, scan api.Scan) (int64, error)
 	UpsertCheck(scanID, id uuid.UUID, check api.Check, updateStates []string) (int64, error)
-	GetScans() ([]api.Scan, error)
+	GetScans(offset, limit uint32) ([]api.Scan, error)
 	GetScanChecks(scanID uuid.UUID) ([]api.Check, error)
 	GetScanByID(id uuid.UUID) (api.Scan, error)
 	UpdateScan(id uuid.UUID, scan api.Scan, updateStates []string) (int64, error)
-	GetScansByExternalIDWithLimit(ID string, limit *uint32) ([]api.Scan, error)
+	GetScansByExternalID(ID string, offset, limit uint32) ([]api.Scan, error)
 	GetCheckByID(id uuid.UUID) (api.Check, error)
 	GetChecksStatusStats(scanID uuid.UUID) (map[string]int, error)
 	DeleteScanChecks(scanID uuid.UUID) error
@@ -115,8 +115,8 @@ func (db Persistence) UpsertCheck(scanID, id uuid.UUID, check api.Check, updateS
 }
 
 // GetScans returns the list of scans.
-func (db Persistence) GetScans() ([]api.Scan, error) {
-	datas, err := db.store.GetAllDocsFromDocType(api.Scan{})
+func (db Persistence) GetScans(offset, limit uint32) ([]api.Scan, error) {
+	datas, err := db.store.GetAllDocsFromDocTypeWithLimit(api.Scan{}, offset, limit)
 	if err != nil {
 		return []api.Scan{}, err
 	}
@@ -176,17 +176,17 @@ func (db Persistence) GetChecksStatusStats(scanID uuid.UUID) (map[string]int, er
 	return db.store.GetChildDocsStatsFromDocType(api.Check{}, "status", scanID)
 }
 
-// GetScansByExternalIDWithLimit returns all the scans with a given ExternalID
-func (db Persistence) GetScansByExternalIDWithLimit(ID string, limit *uint32) ([]api.Scan, error) {
+// GetScansByExternalID returns scans with a given ExternalID applying the given offset and limit.
+func (db Persistence) GetScansByExternalID(ID string, offset, limit uint32) ([]api.Scan, error) {
 	var (
 		err   error
 		datas [][]byte
 		scan  api.Scan
 	)
-	if limit == nil {
+	if offset == 0 && limit == 0 {
 		datas, err = db.store.GetDocsByFieldFromDocType(&scan, `"`+ID+`"`, `external_id`)
 	} else {
-		datas, err = db.store.GetDocsByFieldLimitFromDocType(&scan, `"`+ID+`"`, *limit, `external_id`)
+		datas, err = db.store.GetDocsByFieldLimitFromDocType(&scan, `"`+ID+`"`, offset, limit, `external_id`)
 	}
 	if err != nil {
 		return []api.Scan{}, err

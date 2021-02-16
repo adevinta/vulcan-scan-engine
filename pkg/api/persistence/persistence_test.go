@@ -307,14 +307,15 @@ func TestPersistence_GetScansByExternalID(t *testing.T) {
 	tests := []struct {
 		name    string
 		ID      string
-		Limit   *uint32
+		Offset  uint32
+		Limit   uint32
 		want    []api.Scan
 		wantErr bool
 	}{
 		{
 			name:  "ReturnsScansWithExternalIDLimit2",
 			ID:    `extid1`,
-			Limit: uint32ToPtr(2),
+			Limit: 2,
 			want: []api.Scan{
 				api.Scan{
 					ID:         UUIDFromString("a4b6ba18-5f3f-22e8-9c2d-fa7ad01bbeba"),
@@ -364,7 +365,7 @@ func TestPersistence_GetScansByExternalID(t *testing.T) {
 				t.Fatal(err)
 			}
 			s := NewPersistence(db)
-			got, err := s.GetScansByExternalIDWithLimit(tt.ID, tt.Limit)
+			got, err := s.GetScansByExternalID(tt.ID, tt.Offset, tt.Limit)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Persistence.GetScansByExternalID() error = %v, wantErr %v", err, tt.wantErr)
 				return

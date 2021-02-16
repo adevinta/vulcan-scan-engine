@@ -24,10 +24,10 @@ type ScanCreator interface {
 
 // ScanGetter defines the service interface required by the endpoint GetScan
 type ScanGetter interface {
-	ListScans(ctx context.Context) ([]api.Scan, error)
+	ListScans(ctx context.Context, offset, limit uint32) ([]api.Scan, error)
 	GetScan(ctx context.Context, scanID string) (api.Scan, error)
 	GetScanChecks(ctx context.Context, scanID string) ([]api.Check, error)
-	GetScansByExternalID(ctx context.Context, ID string, all bool) ([]api.Scan, error)
+	GetScansByExternalID(ctx context.Context, ID string, offset, limit uint32) ([]api.Scan, error)
 	AbortScan(ctx context.Context, scanID string) error
 }
 
@@ -35,7 +35,6 @@ type ScanGetter interface {
 type ScanRequest struct {
 	ID            string     `json:"id" urlvar:"id"`
 	ExternalID    string     `json:"external_id" urlquery:"external_id"`
-	All           string     `urlquery:"all"`
 	ScheduledTime *time.Time `json:"scheduled_time"`
 	// TODO: Remove TargetGroup and ChecktypeGroup when we deprecate the version 1
 	// of the endpoint for creating scans.
@@ -44,6 +43,8 @@ type ScanRequest struct {
 	TargetGroups    []api.TargetsChecktypesGroup `json:"target_groups"`
 	Trigger         string                       `json:"trigger"`
 	Tag             string                       `json:"tag,omitempty"`
+	Offset          string                       `urlquery:"offset"`
+	Limit           string                       `urlquery:"limit"`
 }
 
 // ScanResponse represents the response
@@ -126,13 +127,24 @@ func makeListScansEndpoint(s ScanGetter) endpoint.Endpoint {
 		if !ok {
 			return nil, errors.Assertion("Type assertion failed")
 		}
-		all := req.All == "true"
+
+		var offset, limit uint32
+		var offsetErr, limitErr error
+		if req.Offset != "" {
+			offset, offsetErr = util.Str2Uint32(req.Offset)
+		}
+		if req.Limit != "" {
+			limit, limitErr = util.Str2Uint32(req.Limit)
+		}
+		if offsetErr != nil || limitErr != nil {
+			return nil, errors.Assertion("Invalid offset or limit")
+		}
 
 		var scans []api.Scan
 		if req.ExternalID == "" {
-			scans, err = s.ListScans(ctx)
+			scans, err = s.ListScans(ctx, offset, limit)
 		} else {
-			scans, err = s.GetScansByExternalID(ctx, req.ExternalID, all)
+			scans, err = s.GetScansByExternalID(ctx, req.ExternalID, offset, limit)
 		}
 		if err != nil {
 			return nil, err

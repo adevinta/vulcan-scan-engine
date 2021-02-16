@@ -56,10 +56,10 @@ type fakeScansPersistence struct {
 	CheckUpsert             func(scanID, id uuid.UUID, check api.Check, updateStates []string) (int64, error)
 	ScanCheckGetter         func(scanID uuid.UUID) ([]api.Check, error)
 	ChecksStatusStatsGetter func(scanID uuid.UUID) (map[string]int, error)
-	ScansGetter             func() ([]api.Scan, error)
+	ScansGetter             func(offset, limit uint32) ([]api.Scan, error)
 	ScanGetter              func(id uuid.UUID) (api.Scan, error)
 	ScanUpdater             func(id uuid.UUID, scan api.Scan, updateStates []string) (int64, error)
-	ScanBYExternalIDGetter  func(ID string, limit *uint32) ([]api.Scan, error)
+	ScanBYExternalIDGetter  func(ID string, offset, limit uint32) ([]api.Scan, error)
 	ScanChecksRemover       func(scanID uuid.UUID) error
 	ScanIDForCheckGetter    func(ID uuid.UUID) (uuid.UUID, error)
 	CheckGetter             func(id uuid.UUID) (api.Check, error)
@@ -74,8 +74,8 @@ func (f fakeScansPersistence) UpsertCheck(scanID, id uuid.UUID, check api.Check,
 func (f fakeScansPersistence) GetScanChecks(scanID uuid.UUID) ([]api.Check, error) {
 	return f.ScanCheckGetter(scanID)
 }
-func (f fakeScansPersistence) GetScans() ([]api.Scan, error) {
-	return f.ScansGetter()
+func (f fakeScansPersistence) GetScans(offset, limit uint32) ([]api.Scan, error) {
+	return f.ScansGetter(offset, limit)
 }
 func (f fakeScansPersistence) GetScanByID(id uuid.UUID) (api.Scan, error) {
 	return f.ScanGetter(id)
@@ -92,8 +92,8 @@ func (f fakeScansPersistence) AddMalformedEvent(e api.MalformedEvent) (int64, er
 	return 1, nil
 }
 
-func (f fakeScansPersistence) GetScansByExternalIDWithLimit(ID string, limit *uint32) ([]api.Scan, error) {
-	return f.ScanBYExternalIDGetter(ID, limit)
+func (f fakeScansPersistence) GetScansByExternalID(ID string, offset, limit uint32) ([]api.Scan, error) {
+	return f.ScanBYExternalIDGetter(ID, offset, limit)
 }
 
 func (f fakeScansPersistence) GetChecksStatusStats(scanID uuid.UUID) (map[string]int, error) {
@@ -137,7 +137,8 @@ func newInMemoryStore(scans *sync.Map) inMemoryStore {
 				scans.Store(id, scan)
 				return 1, nil
 			},
-			ScansGetter: func() ([]api.Scan, error) {
+			ScansGetter: func(offset, limit uint32) ([]api.Scan, error) {
+				// TODO: handle offset and limit
 				snapshot := []api.Scan{}
 				scans.Range(func(k, v interface{}) bool {
 					current := v.(api.Scan)
@@ -171,7 +172,8 @@ func newInMemoryStore(scans *sync.Map) inMemoryStore {
 				scans.Store(id, current)
 				return 1, nil
 			},
-			ScanBYExternalIDGetter: func(ID string, limit *uint32) ([]api.Scan, error) {
+			ScanBYExternalIDGetter: func(ID string, offset, limit uint32) ([]api.Scan, error) {
+				// TODO: handle offset and limit
 				snapshot := []api.Scan{}
 				scans.Range(func(k, v interface{}) bool {
 					current := v.(api.Scan)

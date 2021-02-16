@@ -570,10 +570,11 @@ func TestDB_GetDocsByField(t *testing.T) {
 
 func TestDB_GetDocsByFieldOrderByLimit(t *testing.T) {
 	type args struct {
-		table string
-		limit *uint32
-		path  []interface{}
-		value string
+		table  string
+		offset uint32
+		limit  uint32
+		path   []interface{}
+		value  string
 	}
 	tests := []struct {
 		name    string
@@ -587,7 +588,7 @@ func TestDB_GetDocsByFieldOrderByLimit(t *testing.T) {
 				table: "scans",
 				path:  []interface{}{`targets`, `name`},
 				value: `"test"`,
-				limit: uint32ToPtr(2),
+				limit: 2,
 			},
 			want: []map[string]interface{}{
 				map[string]interface{}{
@@ -621,7 +622,7 @@ func TestDB_GetDocsByFieldOrderByLimit(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			datas, err := db.GetDocsByFieldLimit(tt.args.table, tt.args.value, tt.args.limit, tt.args.path...)
+			datas, err := db.GetDocsByFieldLimit(tt.args.table, tt.args.value, tt.args.offset, tt.args.limit, tt.args.path...)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("DB.GetDocByField() error = %v, wantErr %v", err, tt.wantErr)
 				return
