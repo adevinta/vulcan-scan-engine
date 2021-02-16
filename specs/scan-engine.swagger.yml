@@ -70,7 +70,7 @@ paths:
           description: Status 200
           schema:
             $ref: "#/definitions/CreateScanResponse"
-  "/scans/{scan_id}":
+  /scans/{scan_id}:
     get:
       tags:
         - Scans
@@ -90,7 +90,26 @@ paths:
         in: path
         required: true
         type: string
-  "/scans/{scan_id}/abort":
+  /scans/{scan_id}/stats:
+    get:
+      tags:
+        - Scans
+      summary: Get scan stats
+      description: Get check status stats for a scan
+      operationId: ScanStats
+      produces:
+        - application/json
+      parameters:
+      - name: scan_id
+        in: path
+        required: true
+        type: string
+      responses:
+        "200":
+          description: ""
+          schema:
+            $ref: "#/definitions/ScanStats"
+  /scans/{scan_id}/abort:
     post:
       tags:
         - Scans
@@ -184,7 +203,6 @@ definitions:
         $ref: "#/definitions/TargetGroup"
       checktypes_group:
         $ref: "#/definitions/ChecktypesGroups"
-
   TargetGroup:
     type: object
     required:
@@ -296,3 +314,22 @@ definitions:
         type: array
         items:
           $ref: "#/definitions/GetScan"
+  ScanStats:
+    type: object
+    properties:
+      checks:
+        type: array
+        items:
+          $ref: "#/definitions/CheckStats" 
+  CheckStats:
+    type: object
+    properties:
+      status:
+        type: string
+        description: ""
+        example: RUNNING
+      total:
+        type: integer
+        description: ""
+        example: 15
+
