@@ -1,3 +1,7 @@
+/*
+Copyright 2021 Adevinta
+*/
+
 package service
 
 import (
@@ -367,7 +371,7 @@ func TestScansService_CreateScan(t *testing.T) {
 			s := ScansService{
 				db:            tt.fields.db,
 				logger:        tt.fields.logger,
-				accreator:     tt.fields.checksCreator,
+				ccreator:      tt.fields.checksCreator,
 				ctInformer:    tt.fields.checktypesInformer,
 				metricsClient: tt.fields.metricsClient,
 			}

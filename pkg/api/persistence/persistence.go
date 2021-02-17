@@ -1,3 +1,7 @@
+/*
+Copyright 2021 Adevinta
+*/
+
 package persistence
 
 import (
@@ -24,7 +28,8 @@ type ScansStore interface {
 	GetScanIDForCheck(ID uuid.UUID) (uuid.UUID, error)
 }
 
-// Persistence implements a
+// Persistence implements ScansStore interface
+// by using the underlying document store.
 type Persistence struct {
 	store db.DB
 }

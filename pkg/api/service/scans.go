@@ -1,3 +1,7 @@
+/*
+Copyright 2021 Adevinta
+*/
+
 package service
 
 import (
@@ -44,13 +48,16 @@ const (
 	metricsScanFinished  = "finished"
 )
 
+// ChecktypesInformer represents an informer for the mapping
+// between checktypes and supported asset types.
 type ChecktypesInformer interface {
 	IndexAssettypes(ctx context.Context, path string) (*http.Response, error)
 	DecodeAssettypeCollection(resp *http.Response) (client.AssettypeCollection, error)
 }
 
-// AsyncChecksCreator ...
-type AsyncChecksCreator interface {
+// ChecksCreator abstracts the actual implementation
+// for the checks creation process.
+type ChecksCreator interface {
 	CreateScanChecks(id string) error
 }
 
@@ -69,20 +76,20 @@ type ScansService struct {
 	logger         log.Logger
 	ctInformer     ChecktypesInformer
 	metricsClient  metrics.Client
-	accreator      AsyncChecksCreator
+	ccreator       ChecksCreator
 	scansNotifier  notify.Notifier
 	checksNotifier notify.Notifier
 }
 
 // New Creates and returns ScansService with all the dependencies wired in.
 func New(logger log.Logger, db persistence.ScansStore, client ChecktypesInformer,
-	metricsClient metrics.Client, accreator AsyncChecksCreator,
+	metricsClient metrics.Client, ccreator ChecksCreator,
 	scansNotifier notify.Notifier, checksNotifier notify.Notifier) ScansService {
 	return ScansService{
 		db:             db,
 		logger:         logger,
 		ctInformer:     client,
-		accreator:      accreator,
+		ccreator:       ccreator,
 		metricsClient:  metricsClient,
 		scansNotifier:  scansNotifier,
 		checksNotifier: checksNotifier,
@@ -209,7 +216,7 @@ func (s ScansService) CreateScan(ctx context.Context, scan *api.Scan) (uuid.UUID
 	s.pushScanMetrics(metricsScanCreated, util.Ptr2Str(scan.Tag), util.Ptr2Str(scan.ExternalID), stats)
 	_ = level.Warn(s.logger).Log("ScanCreated", id)
 	go func() {
-		err := s.accreator.CreateScanChecks(id.String())
+		err := s.ccreator.CreateScanChecks(id.String())
 		if err != nil {
 			_ = level.Error(s.logger).Log("ErrorCreatingChecks", err)
 		}

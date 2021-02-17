@@ -291,6 +291,8 @@ func addMetricsMiddleware(endpoints *endpoint.Endpoints, metricsClient metrics.C
 	endpoints.CreateScan = withMetrics(endpoints.CreateScan)
 	endpoints.ListScans = withMetrics(endpoints.ListScans)
 	endpoints.GetScan = withMetrics(endpoints.GetScan)
+	endpoints.GetScanChecks = withMetrics(endpoints.GetScanChecks)
+	endpoints.GetScanStats = withMetrics(endpoints.GetScanStats)
 	endpoints.AbortScan = withMetrics(endpoints.AbortScan)
 }
 
@@ -300,6 +302,8 @@ func addLoggingMiddleware(endpoints *endpoint.Endpoints, logger log.Logger) {
 	endpoints.CreateScan = withLog(endpoints.CreateScan)
 	endpoints.ListScans = withLog(endpoints.ListScans)
 	endpoints.GetScan = withLog(endpoints.GetScan)
+	endpoints.GetScanChecks = withLog(endpoints.GetScanChecks)
+	endpoints.GetScanStats = withLog(endpoints.GetScanStats)
 	endpoints.AbortScan = withLog(endpoints.AbortScan)
 }
 
