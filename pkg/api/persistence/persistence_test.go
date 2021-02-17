@@ -14,6 +14,7 @@ import (
 	"github.com/adevinta/vulcan-scan-engine/pkg/api/persistence/db"
 	"github.com/adevinta/vulcan-scan-engine/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	_ "github.com/lib/pq"
 	uuid "github.com/satori/go.uuid"
@@ -37,28 +38,28 @@ var (
 	runningState  = "RUNNING"
 	finishedState = "FINISHED"
 	fixtureScans  = map[string]fixtureScan{
-		"Scan1": fixtureScan{
+		"Scan1": {
 			ID: "c3b5af18-4e1d-11e8-9c2d-fa7ae01bbebc",
 			Checks: map[string]string{
 				"Check1": "c3b5af18-4e1d-11e8-9c2d-fa7ae01bbeaa",
 				"Check2": "c3b5afd8-4e1d-11d8-9c2d-fa7ae01bbeaa",
 			},
 		},
-		"Scan2": fixtureScan{
+		"Scan2": {
 			ID: "a3b5af18-4e1d-11e8-9c2d-fa7ae01bbebc",
 			Checks: map[string]string{
 				"Check3": "c3b5bfe8-4e1d-11d8-9c2d-fa7ae01bbeaa",
 			},
 		},
-		"Scan3": fixtureScan{
+		"Scan3": {
 			ID:     "a3b5af18-4e1d-11e8-9c2d-fa7ae01bbeba",
 			Checks: map[string]string{},
 		},
-		"Scan4": fixtureScan{
+		"Scan4": {
 			ID:     "a3b5af18-4e2d-22e8-9c2d-fa7ad01bbeba",
 			Checks: map[string]string{},
 		},
-		"Scan5": fixtureScan{
+		"Scan5": {
 			ID: "a3b5ca18-4e2d-22e8-9c2d-fa7ad01bbeba",
 			Checks: map[string]string{
 				"Check4": "b3b5ca18-4e2d-22e8-9c2d-fa7ad01bbeba",
@@ -83,16 +84,20 @@ func TestMain(m *testing.M) {
 		res = 1
 		return
 	}
-	err = testutil.LoadFixtures(fixtures, dbName)
-	if err != nil {
-		fmt.Printf("error setting up tests: %s", err.Error())
-		res = 1
-		return
-	}
 	res = m.Run()
 }
 
+func loadFixtures(t *testing.T) {
+	t.Helper()
+	err := testutil.LoadFixtures(fixtures, dbName)
+	if err != nil {
+		t.Fatalf("error setting up tests: %s", err.Error())
+	}
+}
+
 func TestStore_UpdateScan(t *testing.T) {
+	loadFixtures(t)
+
 	type args struct {
 		id           uuid.UUID
 		scan         api.Scan
@@ -189,6 +194,8 @@ func TestStore_UpdateScan(t *testing.T) {
 }
 
 func TestStore_UpsertCheck(t *testing.T) {
+	loadFixtures(t)
+
 	type args struct {
 		scanID       uuid.UUID
 		id           uuid.UUID
@@ -253,6 +260,8 @@ func TestStore_UpsertCheck(t *testing.T) {
 }
 
 func TestPersistence_InsertCheckIfNotExists(t *testing.T) {
+	loadFixtures(t)
+
 	tests := []struct {
 		name    string
 		check   api.Check
@@ -307,7 +316,147 @@ func UUIDFromString(v string) uuid.UUID {
 	return ret
 }
 
+func TestPersistence_GetScans(t *testing.T) {
+	loadFixtures(t)
+
+	tests := []struct {
+		name    string
+		Offset  uint32
+		Limit   uint32
+		want    []api.Scan
+		wantErr bool
+	}{
+		{
+			name: "ReturnsScansHappyPath",
+			want: []api.Scan{
+				{
+					ID:       UUIDFromString("c3b5af18-4e1d-11e8-9c2d-fa7ae01bbebc"),
+					Status:   &runningState,
+					Progress: testutil.FloatPointer(0.5),
+				},
+				{
+					ID:       UUIDFromString("a3b5af18-4e1d-11e8-9c2d-fa7ae01bbebc"),
+					Status:   &runningState,
+					Progress: testutil.FloatPointer(0),
+				},
+				{
+					ID:       UUIDFromString("a3b5af18-4e1d-11e8-9c2d-fa7ae01bbeba"),
+					Status:   &finishedState,
+					Progress: testutil.FloatPointer(1),
+				},
+				{
+					ID:       UUIDFromString("a3b5af18-4e2d-22e8-9c2d-fa7ad01bbeba"),
+					Status:   &runningState,
+					Progress: testutil.FloatPointer(0.3),
+				},
+				{
+					ID:       UUIDFromString("a3b5ca18-4e2d-22e8-9c2d-fa7ad01bbeba"),
+					Status:   &runningState,
+					Progress: testutil.FloatPointer(0.1),
+				},
+				{
+					ID:         UUIDFromString("a3b5ca18-5f3f-22e8-9c2d-fa7ad01bbeba"),
+					ExternalID: testutil.StringPointer("extid1"),
+					Status:     &finishedState,
+					Progress:   testutil.FloatPointer(1),
+				},
+				{
+					ID:         UUIDFromString("a4b6ba18-5f3f-22e8-9c2d-fa7ad01bbeba"),
+					ExternalID: testutil.StringPointer("extid1"),
+					Status:     &runningState,
+					Progress:   testutil.FloatPointer(0.1),
+				},
+				{
+					ID:         UUIDFromString("a4b6ba18-5f3f-22e8-9c2d-fa7ad01bbeb1"),
+					ExternalID: testutil.StringPointer("extid1"),
+					Status:     &runningState,
+					Progress:   testutil.FloatPointer(0.1),
+				},
+			},
+		},
+		{
+			name:  "ReturnsScansLimit2",
+			Limit: 2,
+			want: []api.Scan{
+				{
+					ID:       UUIDFromString("c3b5af18-4e1d-11e8-9c2d-fa7ae01bbebc"),
+					Status:   &runningState,
+					Progress: testutil.FloatPointer(0.5),
+				},
+				{
+					ID:       UUIDFromString("a3b5af18-4e1d-11e8-9c2d-fa7ae01bbebc"),
+					Status:   &runningState,
+					Progress: testutil.FloatPointer(0),
+				},
+			},
+		},
+		{
+			name:   "ReturnsScansOffset5",
+			Offset: 5,
+			want: []api.Scan{
+				{
+					ID:         UUIDFromString("a3b5ca18-5f3f-22e8-9c2d-fa7ad01bbeba"),
+					ExternalID: testutil.StringPointer("extid1"),
+					Status:     &finishedState,
+					Progress:   testutil.FloatPointer(1),
+				},
+				{
+					ID:         UUIDFromString("a4b6ba18-5f3f-22e8-9c2d-fa7ad01bbeba"),
+					ExternalID: testutil.StringPointer("extid1"),
+					Status:     &runningState,
+					Progress:   testutil.FloatPointer(0.1),
+				},
+				{
+					ID:         UUIDFromString("a4b6ba18-5f3f-22e8-9c2d-fa7ad01bbeb1"),
+					ExternalID: testutil.StringPointer("extid1"),
+					Status:     &runningState,
+					Progress:   testutil.FloatPointer(0.1),
+				},
+			},
+		},
+		{
+			name:   "ReturnsScansOffset2Limit2",
+			Offset: 2,
+			Limit:  2,
+			want: []api.Scan{
+				{
+					ID:       UUIDFromString("a3b5af18-4e1d-11e8-9c2d-fa7ae01bbeba"),
+					Status:   &finishedState,
+					Progress: testutil.FloatPointer(1),
+				},
+				{
+					ID:       UUIDFromString("a3b5af18-4e2d-22e8-9c2d-fa7ad01bbeba"),
+					Status:   &runningState,
+					Progress: testutil.FloatPointer(0.3),
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			db, err := db.NewDB(dialect, connStr)
+			defer db.Close() //nolint
+			if err != nil {
+				t.Fatal(err)
+			}
+			s := NewPersistence(db)
+			got, err := s.GetScans(tt.Offset, tt.Limit)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Persistence.GetScans() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			diff := cmp.Diff(tt.want, got, cmpopts.IgnoreFields(api.Scan{}, "CheckCount", "ChecksCreated"))
+			if diff != "" {
+				t.Errorf("want Scans != got Scans. Diff: %s\n", diff)
+			}
+		})
+	}
+}
+
 func TestPersistence_GetScansByExternalID(t *testing.T) {
+	loadFixtures(t)
+
 	tests := []struct {
 		name    string
 		ID      string
@@ -321,17 +470,17 @@ func TestPersistence_GetScansByExternalID(t *testing.T) {
 			ID:    `extid1`,
 			Limit: 2,
 			want: []api.Scan{
-				api.Scan{
-					ID:         UUIDFromString("a4b6ba18-5f3f-22e8-9c2d-fa7ad01bbeba"),
-					ExternalID: testutil.StringPointer("extid1"),
-					Status:     &runningState,
-					Progress:   testutil.FloatPointer(0.1),
-				},
-				api.Scan{
+				{
 					ID:         UUIDFromString("a3b5ca18-5f3f-22e8-9c2d-fa7ad01bbeba"),
 					ExternalID: testutil.StringPointer("extid1"),
 					Status:     &finishedState,
 					Progress:   testutil.FloatPointer(1),
+				},
+				{
+					ID:         UUIDFromString("a4b6ba18-5f3f-22e8-9c2d-fa7ad01bbeba"),
+					ExternalID: testutil.StringPointer("extid1"),
+					Status:     &runningState,
+					Progress:   testutil.FloatPointer(0.1),
 				},
 			},
 		},
@@ -339,23 +488,55 @@ func TestPersistence_GetScansByExternalID(t *testing.T) {
 			name: "ReturnsScansWithExternalIDNoLimit",
 			ID:   `extid1`,
 			want: []api.Scan{
-				api.Scan{
-					ID:         UUIDFromString("a4b6ba18-5f3f-22e8-9c2d-fa7ad01bbeba"),
-					ExternalID: testutil.StringPointer("extid1"),
-					Status:     &runningState,
-					Progress:   testutil.FloatPointer(0.1),
-				},
-				api.Scan{
+				{
 					ID:         UUIDFromString("a3b5ca18-5f3f-22e8-9c2d-fa7ad01bbeba"),
 					ExternalID: testutil.StringPointer("extid1"),
 					Status:     &finishedState,
 					Progress:   testutil.FloatPointer(1),
 				},
-				api.Scan{
+				{
+					ID:         UUIDFromString("a4b6ba18-5f3f-22e8-9c2d-fa7ad01bbeba"),
+					ExternalID: testutil.StringPointer("extid1"),
+					Status:     &runningState,
+					Progress:   testutil.FloatPointer(0.1),
+				},
+				{
 					ID:         UUIDFromString("a4b6ba18-5f3f-22e8-9c2d-fa7ad01bbeb1"),
 					ExternalID: testutil.StringPointer("extid1"),
 					Status:     &runningState,
-					CheckCount: testutil.IntPointer(1),
+					Progress:   testutil.FloatPointer(0.1),
+				},
+			},
+		},
+		{
+			name:   "ReturnsScansWithExternalIDOffset1",
+			ID:     `extid1`,
+			Offset: 1,
+			want: []api.Scan{
+				{
+					ID:         UUIDFromString("a4b6ba18-5f3f-22e8-9c2d-fa7ad01bbeba"),
+					ExternalID: testutil.StringPointer("extid1"),
+					Status:     &runningState,
+					Progress:   testutil.FloatPointer(0.1),
+				},
+				{
+					ID:         UUIDFromString("a4b6ba18-5f3f-22e8-9c2d-fa7ad01bbeb1"),
+					ExternalID: testutil.StringPointer("extid1"),
+					Status:     &runningState,
+					Progress:   testutil.FloatPointer(0.1),
+				},
+			},
+		},
+		{
+			name:   "ReturnsScansWithExternalIDOffset1Limit1",
+			ID:     `extid1`,
+			Offset: 1,
+			Limit:  1,
+			want: []api.Scan{
+				{
+					ID:         UUIDFromString("a4b6ba18-5f3f-22e8-9c2d-fa7ad01bbeba"),
+					ExternalID: testutil.StringPointer("extid1"),
+					Status:     &runningState,
 					Progress:   testutil.FloatPointer(0.1),
 				},
 			},
@@ -376,11 +557,9 @@ func TestPersistence_GetScansByExternalID(t *testing.T) {
 			}
 
 			diff := cmp.Diff(tt.want, got)
-			fmt.Println(diff)
 			if diff != "" {
 				t.Errorf("want Scans != got Scans. Diff: %s\n", diff)
 			}
-
 		})
 	}
 }
@@ -446,6 +625,8 @@ func TestPersistence_TryLockScan(t *testing.T) {
 }
 
 func TestPersistence_GetScanIDForCheck(t *testing.T) {
+	loadFixtures(t)
+
 	tests := []struct {
 		name    string
 		ID      uuid.UUID
