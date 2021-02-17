@@ -20,10 +20,10 @@ type ScansStore interface {
 	GetScans(offset, limit uint32) ([]api.Scan, error)
 	GetScanChecks(scanID uuid.UUID) ([]api.Check, error)
 	GetScanByID(id uuid.UUID) (api.Scan, error)
+	GetScanStats(scanID uuid.UUID) (map[string]int, error)
 	UpdateScan(id uuid.UUID, scan api.Scan, updateStates []string) (int64, error)
 	GetScansByExternalID(ID string, offset, limit uint32) ([]api.Scan, error)
 	GetCheckByID(id uuid.UUID) (api.Check, error)
-	GetChecksStatusStats(scanID uuid.UUID) (map[string]int, error)
 	DeleteScanChecks(scanID uuid.UUID) error
 	GetScanIDForCheck(ID uuid.UUID) (uuid.UUID, error)
 }
@@ -175,9 +175,8 @@ func (db Persistence) GetCheckByID(id uuid.UUID) (api.Check, error) {
 	return c, err
 }
 
-// GetChecksStatusStats the number of checks belonging to a scan that are in a
-// concrete status.
-func (db Persistence) GetChecksStatusStats(scanID uuid.UUID) (map[string]int, error) {
+// GetScanStats returns the number of checks by status for the given scan.
+func (db Persistence) GetScanStats(scanID uuid.UUID) (map[string]int, error) {
 	return db.store.GetChildDocsStatsFromDocType(api.Check{}, "status", scanID)
 }
 

@@ -137,24 +137,15 @@ func (s ScansService) GetScansByExternalID(ctx context.Context, ID string, offse
 	return scans, nil
 }
 
-// GetScanStats returns the check states for the given scan ID.
+// GetScanStats returns the check stats for the given scan ID.
 func (s ScansService) GetScanStats(ctx context.Context, scanID string) ([]api.CheckStats, error) {
 	id, err := uuid.FromString(scanID)
 	if err != nil {
 		return nil, errors.Assertion(fmt.Sprintf("not valid scan ID %s", scanID))
 	}
-	checks, err := s.db.GetScanChecks(id)
+	stats, err := s.db.GetScanStats(id)
 	if err != nil {
 		return nil, err
-	}
-	stats := map[string]int{}
-	for _, c := range checks {
-		current, ok := stats[c.Status]
-		if ok {
-			stats[c.Status] = current + 1
-		} else {
-			stats[c.Status] = 1
-		}
 	}
 	var checkStats []api.CheckStats
 	for status, total := range stats {
@@ -426,7 +417,7 @@ func (s ScansService) updateScanStatus(id uuid.UUID) (int64, string, error) {
 		return 0, ScanStatusFinished, nil
 	}
 
-	stats, err := s.db.GetChecksStatusStats(scan.ID)
+	stats, err := s.db.GetScanStats(scan.ID)
 	if err != nil {
 		return 0, "", nil
 	}

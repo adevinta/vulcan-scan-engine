@@ -56,17 +56,17 @@ var (
 )
 
 type fakeScansPersistence struct {
-	ScanCreator             func(uuid.UUID, api.Scan) (int64, error)
-	CheckUpsert             func(scanID, id uuid.UUID, check api.Check, updateStates []string) (int64, error)
-	ScanCheckGetter         func(scanID uuid.UUID) ([]api.Check, error)
-	ChecksStatusStatsGetter func(scanID uuid.UUID) (map[string]int, error)
-	ScansGetter             func(offset, limit uint32) ([]api.Scan, error)
-	ScanGetter              func(id uuid.UUID) (api.Scan, error)
-	ScanUpdater             func(id uuid.UUID, scan api.Scan, updateStates []string) (int64, error)
-	ScanBYExternalIDGetter  func(ID string, offset, limit uint32) ([]api.Scan, error)
-	ScanChecksRemover       func(scanID uuid.UUID) error
-	ScanIDForCheckGetter    func(ID uuid.UUID) (uuid.UUID, error)
-	CheckGetter             func(id uuid.UUID) (api.Check, error)
+	ScanCreator            func(uuid.UUID, api.Scan) (int64, error)
+	CheckUpsert            func(scanID, id uuid.UUID, check api.Check, updateStates []string) (int64, error)
+	ScanCheckGetter        func(scanID uuid.UUID) ([]api.Check, error)
+	ScanStatsGetter        func(scanID uuid.UUID) (map[string]int, error)
+	ScansGetter            func(offset, limit uint32) ([]api.Scan, error)
+	ScanGetter             func(id uuid.UUID) (api.Scan, error)
+	ScanUpdater            func(id uuid.UUID, scan api.Scan, updateStates []string) (int64, error)
+	ScanBYExternalIDGetter func(ID string, offset, limit uint32) ([]api.Scan, error)
+	ScanChecksRemover      func(scanID uuid.UUID) error
+	ScanIDForCheckGetter   func(ID uuid.UUID) (uuid.UUID, error)
+	CheckGetter            func(id uuid.UUID) (api.Check, error)
 }
 
 func (f fakeScansPersistence) CreateScan(id uuid.UUID, scan api.Scan) (int64, error) {
@@ -100,8 +100,8 @@ func (f fakeScansPersistence) GetScansByExternalID(ID string, offset, limit uint
 	return f.ScanBYExternalIDGetter(ID, offset, limit)
 }
 
-func (f fakeScansPersistence) GetChecksStatusStats(scanID uuid.UUID) (map[string]int, error) {
-	return f.ChecksStatusStatsGetter(scanID)
+func (f fakeScansPersistence) GetScanStats(scanID uuid.UUID) (map[string]int, error) {
+	return f.ScanStatsGetter(scanID)
 }
 
 func (f fakeScansPersistence) DeleteScanChecks(scanID uuid.UUID) error {
@@ -162,7 +162,7 @@ func newInMemoryStore(scans *sync.Map) inMemoryStore {
 			ScanCheckGetter: func(scanID uuid.UUID) ([]api.Check, error) {
 				return []api.Check{}, nil
 			},
-			ChecksStatusStatsGetter: func(scanID uuid.UUID) (map[string]int, error) {
+			ScanStatsGetter: func(scanID uuid.UUID) (map[string]int, error) {
 				return map[string]int{}, nil
 			},
 			ScanUpdater: func(id uuid.UUID, scan api.Scan, updateStates []string) (int64, error) {
