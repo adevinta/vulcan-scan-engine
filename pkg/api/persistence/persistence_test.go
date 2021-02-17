@@ -564,6 +564,61 @@ func TestPersistence_GetScansByExternalID(t *testing.T) {
 	}
 }
 
+func TestPersistence_GetScanChecks(t *testing.T) {
+	loadFixtures(t)
+
+	tests := []struct {
+		name    string
+		scanID  uuid.UUID
+		want    []api.Check
+		wantErr bool
+	}{
+		{
+			name:   "ReturnsChecksHappyPath",
+			scanID: UUIDFromString("c3b5af18-4e1d-11e8-9c2d-fa7ae01bbebc"),
+			want: []api.Check{
+				{
+					ID:     "c3b5af18-4e1d-11e8-9c2d-fa7ae01bbeaa",
+					Status: "CREATED",
+					Target: "localhost",
+				},
+				{
+					ID:     "c3b5afd8-4e1d-11d8-9c2d-fa7ae01bbeaa",
+					Status: "FINISHED",
+					Target: "localhost",
+				},
+			},
+		},
+		{
+			name:   "ReturnsChecksInnexistentScan",
+			scanID: UUIDFromString("a3c6bf18-4e1d-11e8-9c2a-fa7ae01bbeba"),
+			want:   []api.Check{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			db, err := db.NewDB(dialect, connStr)
+			defer db.Close() //nolint
+			if err != nil {
+				t.Fatal(err)
+			}
+			s := NewPersistence(db)
+			got, err := s.GetScanChecks(tt.scanID)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Persistence.GetScanChecks() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			diff := cmp.Diff(tt.want, got, cmpopts.IgnoreFields(api.Check{},
+				"Options", "ScanID", "WebHook", "Progress", "QueueName", "ChecktypeID", "Data",
+			))
+			if diff != "" {
+				t.Errorf("want checks != got checks. Diff: %s\n", diff)
+			}
+		})
+	}
+}
+
 func TestPersistence_GetCreatingScans(t *testing.T) {
 	tests := []struct {
 		name    string
