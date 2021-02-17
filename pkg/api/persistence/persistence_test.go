@@ -619,6 +619,58 @@ func TestPersistence_GetScanChecks(t *testing.T) {
 	}
 }
 
+func TestPersistence_GetScanStats(t *testing.T) {
+	loadFixtures(t)
+
+	tests := []struct {
+		name    string
+		scanID  uuid.UUID
+		want    map[string]int
+		wantErr bool
+	}{
+		{
+			name:   "ReturnsStatsHappyPath",
+			scanID: UUIDFromString("c3b5af18-4e1d-11e8-9c2d-fa7ae01bbebc"),
+			want: map[string]int{
+				"CREATED":  1,
+				"FINISHED": 1,
+			},
+		},
+		{
+			name:   "ReturnsStatsSingleCheck",
+			scanID: UUIDFromString("a3b5af18-4e1d-11e8-9c2d-fa7ae01bbebc"),
+			want: map[string]int{
+				"FINISHED": 1,
+			},
+		},
+		{
+			name:   "ReturnsStatsInnexistentScanID",
+			scanID: UUIDFromString("a3c6bf18-4e1d-11e8-9c2a-fa7ae01bbeba"),
+			want:   map[string]int{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			db, err := db.NewDB(dialect, connStr)
+			defer db.Close() //nolint
+			if err != nil {
+				t.Fatal(err)
+			}
+			s := NewPersistence(db)
+			got, err := s.GetScanStats(tt.scanID)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Persistence.GetScanStats() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			diff := cmp.Diff(tt.want, got)
+			if diff != "" {
+				t.Errorf("want stats != got stats. Diff: %s\n", diff)
+			}
+		})
+	}
+}
+
 func TestPersistence_GetCreatingScans(t *testing.T) {
 	tests := []struct {
 		name    string
