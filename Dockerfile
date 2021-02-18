@@ -38,7 +38,6 @@ COPY db/*.sql /app/sql/
 COPY --from=builder /app/cmd/vulcan-scan-engine/vulcan-scan-engine .
 
 COPY config.toml .
-COPY queues.yaml ./config/queues.yaml
 COPY run.sh .
 
 CMD [ "./run.sh" ]
