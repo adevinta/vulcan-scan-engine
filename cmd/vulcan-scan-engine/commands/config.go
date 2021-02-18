@@ -41,25 +41,28 @@ type checkCreatorConfig struct {
 	Period       int `mapstructure:"period"` // seconds
 }
 
-type checktypesQueuesConfig struct {
-	Queues []checktypeQueueConfig `yaml:"queues"` // ARNs of agent queues
+type checktypeQueues struct {
+	ARN        string
+	Checktypes []string
 }
 
+type checktypeQueueConfig map[string]checktypeQueues
+
 // ARNs returns map with the following shape: ["queuename":"arn1"]
-func (c checktypesQueuesConfig) ARNs() map[string]string {
+func (c checktypeQueueConfig) ARNs() map[string]string {
 	var qarns = make(map[string]string)
-	for _, q := range c.Queues {
-		qarns[q.Name] = q.ARN
+	for qType, q := range c {
+		qarns[qType] = q.ARN
 	}
 	return qarns
 }
 
 // Names returns a map with the following shape:
 // ["default":"default","vulcan-nessus":"nessus"]
-func (c checktypesQueuesConfig) Names() map[string]string {
+func (c checktypeQueueConfig) Names() map[string]string {
 	var ctQNames = make(map[string]string)
-	for _, q := range c.Queues {
-		if q.Name == "default" {
+	for qType, q := range c {
+		if qType == "default" {
 			ctQNames["default"] = "default"
 			continue
 		}
@@ -68,16 +71,10 @@ func (c checktypesQueuesConfig) Names() map[string]string {
 			continue
 		}
 		for _, ct := range cts {
-			ctQNames[ct] = q.Name
+			ctQNames[ct] = qType
 		}
 	}
 	return ctQNames
-}
-
-type checktypeQueueConfig struct {
-	Name       string
-	ARN        string
-	Checktypes []string
 }
 
 type config struct {
@@ -90,6 +87,7 @@ type config struct {
 	ChecksSNS     notify.Config      `mapstructure:"checks_sns"`
 	ChecksCreator checkCreatorConfig `mapstructure:"check_creator"`
 	Metrics       metricsConfig
+	CTQueues      checktypeQueueConfig `mapstructure:"queues"`
 }
 
 func initConfig() {
