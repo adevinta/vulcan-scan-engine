@@ -5,7 +5,6 @@
 # export default values for required vars if not set
 export PORT=${PORT:-8080}
 export DOGSTATSD_ENABLED=${DOGSTATSD_ENABLED:-false}
-export AWS_CHECK_CREATOR_SEND_TO_AGENTS=${AWS_CHECK_CREATOR_SEND_TO_AGENTS:-false}
 
 # Apply env variables
 cat config.toml | envsubst > run.toml
@@ -20,4 +19,4 @@ flyway -user=$PG_USER -password=$PG_PASSWORD \
   -url=jdbc:postgresql://$PG_HOST:$PG_PORT/$PG_NAME?sslmode=$PG_SSLMODE \
   -baselineOnMigrate=true -locations=filesystem:/app/sql migrate
 
-./vulcan-scan-engine -c run.toml -q ./config/queues.yaml
+./vulcan-scan-engine -c run.toml

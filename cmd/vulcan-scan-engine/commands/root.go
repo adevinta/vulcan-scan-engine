@@ -40,10 +40,9 @@ import (
 )
 
 var (
-	cfgFile       string
-	httpPort      int
-	cfgQueuesFile string
-	cfg           config
+	cfgFile  string
+	httpPort int
+	cfg      config
 	// all, debug, error, info, warn
 	logLevels = map[string]func(log.Logger) log.Logger{
 		"all": func(l log.Logger) log.Logger {
@@ -93,7 +92,6 @@ func init() {
 	cobra.OnInitialize(initConfig)
 
 	rootCmd.Flags().StringVarP(&cfgFile, "config", "c", "", "config file (default is $HOME/.vulcan-scan-engine)")
-	rootCmd.Flags().StringVarP(&cfgQueuesFile, "queues", "q", "", "checktypes queues config file")
 	rootCmd.Flags().IntVarP(&httpPort, "port", "p", 0, "web server listening port")
 	err := viper.BindPFlag("server.port", rootCmd.Flags().Lookup("port"))
 	if err != nil {

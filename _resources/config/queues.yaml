@@ -1,8 +1,0 @@
-sendToAgents: true
-queues:
-  - name: default
-    arn: arn:aws:sqs:xxx:123456789012:yyy
-  - name: nessus
-    arn: arn:aws:sqs:xxx:123456789012:yyy
-    checktypes:
-      - vulcan-nessus
