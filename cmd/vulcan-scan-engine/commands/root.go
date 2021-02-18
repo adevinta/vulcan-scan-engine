@@ -8,7 +8,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"os/signal"
@@ -22,7 +21,6 @@ import (
 	goaclient "github.com/goadesign/goa/client"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"gopkg.in/yaml.v3"
 
 	"github.com/adevinta/vulcan-core-cli/vulcan-core/client"
 	metrics "github.com/adevinta/vulcan-metrics-client"
@@ -42,10 +40,9 @@ import (
 )
 
 var (
-	cfgFile       string
-	httpPort      int
-	cfgQueuesFile string
-	cfg           config
+	cfgFile  string
+	httpPort int
+	cfg      config
 	// all, debug, error, info, warn
 	logLevels = map[string]func(log.Logger) log.Logger{
 		"all": func(l log.Logger) log.Logger {
@@ -95,7 +92,6 @@ func init() {
 	cobra.OnInitialize(initConfig)
 
 	rootCmd.Flags().StringVarP(&cfgFile, "config", "c", "", "config file (default is $HOME/.vulcan-scan-engine)")
-	rootCmd.Flags().StringVarP(&cfgQueuesFile, "queues", "q", "", "checktypes queues config file")
 	rootCmd.Flags().IntVarP(&httpPort, "port", "p", 0, "web server listening port")
 	err := viper.BindPFlag("server.port", rootCmd.Flags().Lookup("port"))
 	if err != nil {
@@ -119,18 +115,6 @@ func startServer() error {
 	logger, err := logWithConfig(cfg.Log, logger)
 	if err != nil {
 		return err
-	}
-
-	var ctqConfig checktypesQueuesConfig
-	if cfgQueuesFile != "" {
-		queueContents, err := ioutil.ReadFile(cfgQueuesFile)
-		if err != nil {
-			return err
-		}
-		err = yaml.Unmarshal(queueContents, &ctqConfig)
-		if err != nil {
-			return err
-		}
 	}
 
 	wd, err := os.Getwd()
@@ -179,11 +163,11 @@ func startServer() error {
 		sch *scheduler.Scheduler
 	)
 
-	producer, err := queue.NewMultiSQSProducer(ctqConfig.ARNs(), logger)
+	producer, err := queue.NewMultiSQSProducer(cfg.CTQueues.ARNs(), logger)
 	if err != nil {
 		return err
 	}
-	jobsSender, err := scans.NewJobQueueSender(producer, ctqConfig.Names())
+	jobsSender, err := scans.NewJobQueueSender(producer, cfg.CTQueues.Names())
 	if err != nil {
 		return err
 	}
