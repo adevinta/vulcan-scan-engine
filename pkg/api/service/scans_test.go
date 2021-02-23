@@ -23,6 +23,7 @@ import (
 	metrics "github.com/adevinta/vulcan-metrics-client"
 	"github.com/adevinta/vulcan-scan-engine/pkg/api"
 	"github.com/adevinta/vulcan-scan-engine/pkg/api/persistence"
+	"github.com/adevinta/vulcan-scan-engine/pkg/stream"
 )
 
 var (
@@ -207,6 +208,14 @@ type mockMetricsClient struct {
 
 func (mc *mockMetricsClient) Push(m metrics.Metric)              {}
 func (mc *mockMetricsClient) PushWithRate(m metrics.RatedMetric) {}
+
+type mockStreamClient struct {
+	abortFunc func(ctx context.Context, checks []string) error
+}
+
+func (m *mockStreamClient) AbortChecks(ctx context.Context, checks []string) error {
+	return m.abortFunc(ctx, checks)
+}
 
 type inMemAsyncCheckCreator struct {
 	ScanIDs []string
@@ -413,8 +422,9 @@ func TestScansService_CreateScan(t *testing.T) {
 
 func TestScansService_AbortScan(t *testing.T) {
 	type fields struct {
-		storeCreator func() persistence.ScansStore
-		logger       log.Logger
+		storeCreator        func() persistence.ScansStore
+		streamClientCreator func() stream.Client
+		logger              log.Logger
 	}
 	type args struct {
 		ctx    context.Context
@@ -437,19 +447,28 @@ func TestScansService_AbortScan(t *testing.T) {
 					})
 					return newInMemoryStore(scans)
 				},
+				streamClientCreator: func() stream.Client {
+					return &mockStreamClient{
+						abortFunc: func(ctx context.Context, checks []string) error {
+							return nil // push OK
+						},
+					}
+				},
 				logger: log.NewLogfmtLogger(os.Stdout),
 			},
 			args: args{
 				ctx:    context.Background(),
 				scanID: "b3b5af18-4e1d-11e8-9c2d-fa7ae01bbebd",
 			},
-			wantErr: ErrNotImplemented,
 		},
 		{
 			name: "ReturnsNotFoundIfScanDoesNotExist",
 			fields: fields{
 				storeCreator: func() persistence.ScansStore {
 					return newInMemoryStore(new(sync.Map))
+				},
+				streamClientCreator: func() stream.Client {
+					return nil
 				},
 				logger: log.NewLogfmtLogger(os.Stdout),
 			},
@@ -459,20 +478,41 @@ func TestScansService_AbortScan(t *testing.T) {
 			},
 			wantErr: errors.NotFound(nil),
 		},
+		{
+			name: "ReturnsErrorIfStreamCommunicationFails",
+			fields: fields{
+				storeCreator: func() persistence.ScansStore {
+					return newInMemoryStore(new(sync.Map))
+				},
+				streamClientCreator: func() stream.Client {
+					return &mockStreamClient{
+						abortFunc: func(ctx context.Context, checks []string) error {
+							return errors.Default(nil)
+						},
+					}
+				},
+				logger: log.NewLogfmtLogger(os.Stdout),
+			},
+			args: args{
+				ctx:    context.Background(),
+				scanID: "b3b5af18-4e1d-11e8-9c2d-fa7ae01bbebd",
+			},
+			wantErr: errors.Default(nil),
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// TODO: Fix test
-			// s := ScansService{
-			// 	db:     tt.fields.storeCreator(),
-			// 	logger: tt.fields.logger,
-			// }
-			// err := s.AbortScan(tt.args.ctx, tt.args.scanID)
-			// if errorToStr(err) != errorToStr(tt.wantErr) {
-			// 	t.Errorf("ScansService.AbortScan() error = %v, wantErr %v", err, tt.wantErr)
-			// 	return
-			// }
+			s := ScansService{
+				db:           tt.fields.storeCreator(),
+				streamClient: tt.fields.streamClientCreator(),
+				logger:       tt.fields.logger,
+			}
+			err := s.AbortScan(tt.args.ctx, tt.args.scanID)
+			if errorToStr(err) != errorToStr(tt.wantErr) {
+				t.Errorf("ScansService.AbortScan() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
 		})
 	}
 }
