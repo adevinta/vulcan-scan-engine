@@ -25,6 +25,7 @@ import (
 	"github.com/adevinta/vulcan-scan-engine/pkg/api"
 	"github.com/adevinta/vulcan-scan-engine/pkg/api/persistence"
 	"github.com/adevinta/vulcan-scan-engine/pkg/notify"
+	"github.com/adevinta/vulcan-scan-engine/pkg/stream"
 	"github.com/adevinta/vulcan-scan-engine/pkg/util"
 )
 
@@ -79,12 +80,13 @@ type ScansService struct {
 	ccreator       ChecksCreator
 	scansNotifier  notify.Notifier
 	checksNotifier notify.Notifier
+	streamClient   stream.Client
 }
 
 // New Creates and returns ScansService with all the dependencies wired in.
 func New(logger log.Logger, db persistence.ScansStore, client ChecktypesInformer,
-	metricsClient metrics.Client, ccreator ChecksCreator,
-	scansNotifier notify.Notifier, checksNotifier notify.Notifier) ScansService {
+	metricsClient metrics.Client, ccreator ChecksCreator, scansNotifier notify.Notifier,
+	checksNotifier notify.Notifier, streamClient stream.Client) ScansService {
 	return ScansService{
 		db:             db,
 		logger:         logger,
@@ -93,6 +95,7 @@ func New(logger log.Logger, db persistence.ScansStore, client ChecktypesInformer
 		metricsClient:  metricsClient,
 		scansNotifier:  scansNotifier,
 		checksNotifier: checksNotifier,
+		streamClient:   streamClient,
 	}
 
 }
@@ -165,13 +168,15 @@ func (s ScansService) AbortScan(ctx context.Context, scanID string) error {
 	if err != nil {
 		return errors.Assertion(fmt.Sprintf("not valid scan ID %s", scanID))
 	}
-	_, err = s.db.GetScanByID(id)
+	checks, err := s.db.GetScanChecks(id)
 	if err != nil {
 		return err
 	}
-	// send a notification for canceling the checks of the scan through the stream.
-	// stream.Notify(checks(scan))
-	return ErrNotImplemented
+	var checkIDs []string
+	for _, c := range checks {
+		checkIDs = append(checkIDs, c.ID)
+	}
+	return s.streamClient.AbortChecks(ctx, checkIDs)
 }
 
 func (s ScansService) CreateScan(ctx context.Context, scan *api.Scan) (uuid.UUID, error) {

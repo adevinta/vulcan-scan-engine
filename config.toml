@@ -36,6 +36,9 @@ enabled = true
 [metrics]
 enabled = $DOGSTATSD_ENABLED
 
+[stream]
+url = "$STREAM_URL"
+
 [check_creator]
 num_of_workers = $AWS_CHECK_CREATOR_WORKERS
 # in seconds.

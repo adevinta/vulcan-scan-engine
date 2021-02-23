@@ -36,6 +36,10 @@ type metricsConfig struct {
 	Enabled bool
 }
 
+type streamConfig struct {
+	URL string
+}
+
 type checkCreatorConfig struct {
 	NumOfWorkers int `mapstructure:"num_of_workers"`
 	Period       int `mapstructure:"period"` // seconds
@@ -83,10 +87,11 @@ type config struct {
 	DB            dbConfig
 	Vulcan        checktypesInformer
 	SQS           queue.Config
-	ScansSNS      notify.Config      `mapstructure:"scans_sns"`
-	ChecksSNS     notify.Config      `mapstructure:"checks_sns"`
-	ChecksCreator checkCreatorConfig `mapstructure:"check_creator"`
+	ScansSNS      notify.Config `mapstructure:"scans_sns"`
+	ChecksSNS     notify.Config `mapstructure:"checks_sns"`
 	Metrics       metricsConfig
+	Stream        streamConfig
+	ChecksCreator checkCreatorConfig   `mapstructure:"check_creator"`
 	CTQueues      checktypeQueueConfig `mapstructure:"queues"`
 }
 

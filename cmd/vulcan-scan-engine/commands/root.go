@@ -37,6 +37,7 @@ import (
 	"github.com/adevinta/vulcan-scan-engine/pkg/queue"
 	"github.com/adevinta/vulcan-scan-engine/pkg/scans"
 	"github.com/adevinta/vulcan-scan-engine/pkg/scheduler"
+	"github.com/adevinta/vulcan-scan-engine/pkg/stream"
 )
 
 var (
@@ -163,6 +164,8 @@ func startServer() error {
 		sch *scheduler.Scheduler
 	)
 
+	streamClient := stream.NewClient(cfg.Stream.URL)
+
 	producer, err := queue.NewMultiSQSProducer(cfg.CTQueues.ARNs(), logger)
 	if err != nil {
 		return err
@@ -188,7 +191,7 @@ func startServer() error {
 		sch.AddTask(t, p)
 	}
 
-	scanService := service.New(logger, st, apiClient, metricsClient, creator, scansNotifier, checksNotifier)
+	scanService := service.New(logger, st, apiClient, metricsClient, creator, scansNotifier, checksNotifier, streamClient)
 
 	healthCheckService := service.HealthcheckService{
 		DB: db,
