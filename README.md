@@ -29,7 +29,7 @@ For running the component locally, clone and run at the root of the repo the fol
 ```
 go install ./...
 source db/postgres-start.sh
-vulcan-scan-engine -c ../_resources/config/local.toml -q _resources/config/queues.yaml
+vulcan-scan-engine -c ../_resources/config/local.toml
 ```
 # Docker execute
 
