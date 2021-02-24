@@ -228,7 +228,7 @@ func makeAbortScanEndpoint(s ScanGetter) endpoint.Endpoint {
 		if err != nil {
 			return nil, err
 		}
-		return Accepted{}, nil
+		return Ok{}, nil
 	}
 }
 

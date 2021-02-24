@@ -168,10 +168,17 @@ func (s ScansService) AbortScan(ctx context.Context, scanID string) error {
 	if err != nil {
 		return errors.Assertion(fmt.Sprintf("not valid scan ID %s", scanID))
 	}
-	_, err = s.db.GetScanByID(id)
+	scan, err := s.db.GetScanByID(id)
 	if err != nil {
 		return err
 	}
+
+	if scan.Status != nil && (*scan.Status == ScanStatusAborted ||
+		*scan.Status == ScanStatusFinished) {
+		err = fmt.Errorf("scan is in terminal status %s", *scan.Status)
+		return errors.Validation(err)
+	}
+
 	checks, err := s.db.GetScanChecks(id)
 	if err != nil {
 		return err
