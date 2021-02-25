@@ -137,7 +137,7 @@ paths:
         "200":
           description: Scan correctly aborted.
         "409":
-          description: Error scan already signaled to be aborted.
+          description: Error scan is already in terminal status.
         "404":
           description: Error scan not found
     parameters:

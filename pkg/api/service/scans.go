@@ -7,6 +7,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	errs "errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -184,8 +185,12 @@ func (s ScansService) AbortScan(ctx context.Context, scanID string) error {
 
 	if scan.Status != nil && (*scan.Status == ScanStatusAborted ||
 		*scan.Status == ScanStatusFinished) {
-		err = fmt.Errorf("scan is in terminal status %s", *scan.Status)
-		return errors.Validation(err)
+		errMssg := fmt.Sprintf("scan is in terminal status %s", *scan.Status)
+		return &errors.Error{
+			Kind:           errs.New("conflict"),
+			Message:        errMssg,
+			HTTPStatusCode: http.StatusConflict,
+		}
 	}
 
 	checks, err := s.db.GetScanChecks(id)
