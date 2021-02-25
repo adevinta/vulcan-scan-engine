@@ -29,6 +29,7 @@ type ScanGetter interface {
 	GetScanChecks(ctx context.Context, scanID string) ([]api.Check, error)
 	GetScansByExternalID(ctx context.Context, ID string, offset, limit uint32) ([]api.Scan, error)
 	GetScanStats(ctx context.Context, scanID string) ([]api.CheckStats, error)
+	GetCheck(ctx context.Context, checkID string) (api.Check, error)
 	AbortScan(ctx context.Context, scanID string) error
 }
 
@@ -80,6 +81,12 @@ type GetScanResponse struct {
 // for a get scan checks stats request.
 type GetScanStatsResponse struct {
 	Checks []api.CheckStats `json:"checks"`
+}
+
+// CheckRequest specifies the request for
+// the get check endpoint.
+type CheckRequest struct {
+	ID string `json:"id" urlvar:"id"`
 }
 
 // GetCheckResponse represents the response
@@ -218,6 +225,25 @@ func makeGetScanStatsEndpoint(s ScanGetter) endpoint.Endpoint {
 	}
 }
 
+func makeGetCheckEndpoint(s ScanGetter) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
+		requestBody, ok := request.(*CheckRequest)
+		if !ok {
+			return nil, errors.Assertion("Type assertion failed")
+		}
+
+		check, err := s.GetCheck(ctx, requestBody.ID)
+		if err != nil {
+			return nil, err
+		}
+		resp, err := buildCheckResponse(check)
+		if err != nil {
+			return nil, err
+		}
+		return Ok{resp}, nil
+	}
+}
+
 func makeAbortScanEndpoint(s ScanGetter) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
 		requestBody, ok := request.(*ScanRequest)
@@ -278,23 +304,31 @@ func buildGetScansResponse(scans []api.Scan) (GetScansResponse, error) {
 	return scansInfo, nil
 }
 
+func buildCheckResponse(c api.Check) (GetCheckResponse, error) {
+	return GetCheckResponse{
+		ID:            c.ID,
+		Status:        c.Status,
+		Target:        c.Target,
+		ChecktypeName: util.Ptr2Str(c.ChecktypeName),
+		Image:         util.Ptr2Str(c.Image),
+		Options:       util.Ptr2Str(c.Options),
+		Report:        util.Ptr2Str(c.Report),
+		Raw:           util.Ptr2Str(c.Raw),
+		Tag:           util.Ptr2Str(c.Tag),
+		Assettype:     util.Ptr2Str(c.Assettype),
+	}, nil
+}
+
 func buildChecksResponse(checks []api.Check) (GetChecksResponse, error) {
 	checksResp := GetChecksResponse{
 		Checks: []GetCheckResponse{},
 	}
 	for _, c := range checks {
-		checksResp.Checks = append(checksResp.Checks, GetCheckResponse{
-			ID:            c.ID,
-			Status:        c.Status,
-			Target:        c.Target,
-			ChecktypeName: util.Ptr2Str(c.ChecktypeName),
-			Image:         util.Ptr2Str(c.Image),
-			Options:       util.Ptr2Str(c.Options),
-			Report:        util.Ptr2Str(c.Report),
-			Raw:           util.Ptr2Str(c.Raw),
-			Tag:           util.Ptr2Str(c.Tag),
-			Assettype:     util.Ptr2Str(c.Assettype),
-		})
+		check, err := buildCheckResponse(c)
+		if err != nil {
+			return GetChecksResponse{}, err
+		}
+		checksResp.Checks = append(checksResp.Checks, check)
 	}
 	return checksResp, nil
 }

@@ -22,6 +22,7 @@ func AttachRoutes(handlers *Handlers) http.Handler {
 	r.Methods("GET").Path("/v1/scans/{id}").Handler(handlers.GetScan)
 	r.Methods("GET").Path("/v1/scans/{id}/checks").Handler(handlers.GetScanChecks)
 	r.Methods("GET").Path("/v1/scans/{id}/stats").Handler(handlers.GetScanStats)
+	r.Methods("GET").Path("/v1/checks/{id}").Handler(handlers.GetCheck)
 	r.Methods("POST").Path("/v1/scans/{id}/abort").Handler(handlers.AbortScan)
 	return r
 }

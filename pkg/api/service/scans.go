@@ -162,6 +162,15 @@ func (s ScansService) GetScanStats(ctx context.Context, scanID string) ([]api.Ch
 	return checkStats, nil
 }
 
+// GetCheck returns the check for the given check ID.
+func (s ScansService) GetCheck(ctx context.Context, checkID string) (api.Check, error) {
+	id, err := uuid.FromString(checkID)
+	if err != nil {
+		return api.Check{}, errors.Assertion(fmt.Sprintf("not valid check ID %s", checkID))
+	}
+	return s.db.GetCheckByID(id)
+}
+
 // AbortScan is called in order to signal the vulcan core to try to abort and on going scan.
 func (s ScansService) AbortScan(ctx context.Context, scanID string) error {
 	id, err := uuid.FromString(scanID)

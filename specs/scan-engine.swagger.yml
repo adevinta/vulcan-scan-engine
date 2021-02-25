@@ -90,6 +90,23 @@ paths:
         in: path
         required: true
         type: string
+  /scans/{scan_id}/checks:
+    get:
+      tags:
+        - Scans
+      summary: Gets checks for a scan
+      description: ""
+      operationId: ListChecks
+      responses:
+        "200":
+          description: ""
+          schema:
+            $ref: "#/definitions/ListChecks"
+    parameters:
+      - name: scan_id
+        in: path
+        required: true
+        type: string
   /scans/{scan_id}/stats:
     get:
       tags:
@@ -117,14 +134,31 @@ paths:
       description: ""
       operationId: AbortScan
       responses:
-        "202":
-          description: Scan correctly signaled to be aborted.
+        "200":
+          description: Scan correctly aborted.
         "409":
           description: Error scan already signaled to be aborted.
         "404":
           description: Error scan not found
     parameters:
       - name: scan_id
+        in: path
+        required: true
+        type: string
+  /checks/{check_id}:
+    get:
+      tags:
+        - Scans
+      summary: Gets a check by ID
+      description: ""
+      operationId: GetCheck
+      responses:
+        "200":
+          description: ""
+          schema:
+            $ref: "#/definitions/GetCheck"
+    parameters:
+      - name: check_id
         in: path
         required: true
         type: string
@@ -299,6 +333,55 @@ definitions:
       check_count:
         type: integer
         description: "number of checks in the scan"
+  GetCheck:
+    type: object
+    required:
+      - ID
+      - Status
+      - Target
+      - Checktype Name
+      - Image
+    properties:
+      id:
+        type: string
+        description: ""
+        example: dd83da60-76bd-11eb-afc5-ceb90fec113b
+      status:
+        type: string
+        description: ""
+        example: FINISHED
+      target:
+        type: string
+        description: ""
+        example: adevinta.com
+      checktype_name:
+        type: string
+        description: ""
+        example: vulcan-tls
+      image:
+        type: string
+        description: ""
+        example: registry.hub.docker.com/v2/adevinta/vulcan-tls:322
+      options:
+        type: string
+        description: ""
+        example: "{}"
+      report:
+        type: string
+        description: ""
+        example: https://results.vulcan.com//v1/reports/dt=2021-02-24/scan=dd83da60-76bd-11eb-afc5-ceb90fec113b/dd83da60-76bd-11eb-afc5-ceb90fec113b.json
+      raw:
+        type: string
+        description: ""
+        example: https://results.vulcan.com/v1/logs/dt=2021-02-24/scan=dd83da60-76bd-11eb-afc5-ceb90fec113b/dd83da60-76bd-11eb-afc5-ceb90fec113b.log
+      tag:
+        type: string
+        description: ""
+        example: "tag:vulcan"
+      assettype:
+        type: string
+        description: ""
+        example: Hostname
   CreateScanResponse:
     type: object
     required:
@@ -314,6 +397,13 @@ definitions:
         type: array
         items:
           $ref: "#/definitions/GetScan"
+  ListChecks:
+    type: object
+    properties:
+      checks:
+        type: array
+        items:
+          $ref: "#/definitions/GetCheck"
   ScanStats:
     type: object
     properties:

@@ -12,31 +12,31 @@ The the component exposes endpoints:
     Gets the status of a scan.
     See [swagger spec](https://github.com/adevinta/vulcan-scan-engine/blob/master/specs/scan-engine.swagger.yml).
 
-3. [GET] /v1/scans?offset={offset}&limit={limit}
+3. [GET] /v1/scans?external_id={id}&offset={offset}&limit={limit}
     
-    Gets the list of scans.
+    Gets the list of scans ordered by descending creation time.
+    External ID param is optional, if set lists only the scans for that external ID.
     Offset and limit parameters are optional, if not set, all results are returned.
     See [swagger spec](https://github.com/adevinta/vulcan-scan-engine/blob/master/specs/scan-engine.swagger.yml).
 
-4. [GET] /v1/scans?external_id={id}&offset={offset}&limit={limit}
-
-    Gets a list of scans with given external id values and ordered by descending creation time.
-    Offset and limit parameters are optional, if not set, all results are returned.
-    See [swagger spec](https://github.com/adevinta/vulcan-scan-engine/blob/master/specs/scan-engine.swagger.yml).
-
-5. [GET] /v1/scans/{scan_id}/checks
+4. [GET] /v1/scans/{scan_id}/checks
 
     Gets the checks for a scan.
     See [swagger spec](https://github.com/adevinta/vulcan-scan-engine/blob/master/specs/scan-engine.swagger.yml).
 
-6. [GET] /v1/scans/{scan_id}/stats
+5. [GET] /v1/scans/{scan_id}/stats
 
     Gets the check stats for a scan.
     See [swagger spec](https://github.com/adevinta/vulcan-scan-engine/blob/master/specs/scan-engine.swagger.yml).
 
-7. [POST] /v1/scans/{scan_id}/abort
+6. [POST] /v1/scans/{scan_id}/abort
 
    Aborts a scan.
+   See [swagger spec](https://github.com/adevinta/vulcan-scan-engine/blob/master/specs/scan-engine.swagger.yml).
+
+7. [GET] /v1/checks/{check_id}
+
+   Gets a check by its ID.
    See [swagger spec](https://github.com/adevinta/vulcan-scan-engine/blob/master/specs/scan-engine.swagger.yml).
 
 For running the component locally, clone and run at the root of the repo the following:
