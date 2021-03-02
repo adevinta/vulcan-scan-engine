@@ -35,11 +35,12 @@ func TestSNSNotifier_Push(t *testing.T) {
 	}
 
 	tests := []struct {
-		name    string
-		fields  fields
-		message map[string]interface{}
-		want    *sns.PublishInput
-		wantErr bool
+		name       string
+		fields     fields
+		message    map[string]interface{}
+		attributes map[string]string
+		want       *sns.PublishInput
+		wantErr    bool
 	}{
 		{
 			name: "PushesMsgsToTopic",
@@ -51,10 +52,17 @@ func TestSNSNotifier_Push(t *testing.T) {
 					Enabled:  true,
 				},
 			},
-			message: map[string]interface{}{"a": "b"},
+			message:    map[string]interface{}{"a": "b"},
+			attributes: map[string]string{"a": "b"},
 			want: &sns.PublishInput{
 				Message:  aws.String(`{"a":"b"}`),
 				TopicArn: aws.String("arn:aTopic"),
+				MessageAttributes: map[string]*sns.MessageAttributeValue{
+					"a": {
+						DataType:    strToPtr("String"),
+						StringValue: strToPtr("b"),
+					},
+				},
 			},
 		},
 	}
@@ -65,7 +73,7 @@ func TestSNSNotifier_Push(t *testing.T) {
 				sns: tt.fields.sns,
 				l:   tt.fields.l,
 			}
-			if err := s.Push(tt.message); (err != nil) != tt.wantErr {
+			if err := s.Push(tt.message, tt.attributes); (err != nil) != tt.wantErr {
 				t.Errorf("SNSNotifier.Push() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			diff := cmp.Diff(tt.want, tt.fields.sns.notification, cmpopts.IgnoreUnexported(sns.PublishInput{}))
@@ -74,4 +82,8 @@ func TestSNSNotifier_Push(t *testing.T) {
 			}
 		})
 	}
+}
+
+func strToPtr(s string) *string {
+	return &s
 }

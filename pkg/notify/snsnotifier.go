@@ -18,7 +18,7 @@ import (
 
 // Notifier represents a generic notifier API.
 type Notifier interface {
-	Push(message interface{}) error
+	Push(message interface{}, attributes map[string]string) error
 }
 
 // Config holds the required sqs config information.
@@ -65,7 +65,7 @@ func NewSNSNotifier(c Config, log log.Logger) (*SNSNotifier, error) {
 }
 
 // Push pushes a notification to the configured sns topic.
-func (s *SNSNotifier) Push(message interface{}) error {
+func (s *SNSNotifier) Push(message interface{}, attributes map[string]string) error {
 	if !s.c.Enabled {
 		_ = level.Info(s.l).Log("PushNotification", "Disabled")
 		return nil
@@ -75,9 +75,21 @@ func (s *SNSNotifier) Push(message interface{}) error {
 	if err != nil {
 		return err
 	}
+	var attrs map[string]*sns.MessageAttributeValue
+	if attributes != nil {
+		attrs = make(map[string]*sns.MessageAttributeValue)
+		t := "String"
+		for n, v := range attributes {
+			attrs[n] = &sns.MessageAttributeValue{
+				DataType:    &t,
+				StringValue: &v,
+			}
+		}
+	}
 	input := &sns.PublishInput{
-		Message:  aws.String(string(content)),
-		TopicArn: aws.String(s.c.TopicArn),
+		Message:           aws.String(string(content)),
+		TopicArn:          aws.String(s.c.TopicArn),
+		MessageAttributes: attrs,
 	}
 	_, err = s.sns.Publish(input)
 	if err != nil {

@@ -397,7 +397,7 @@ func (s ScansService) notifyScan(scanID uuid.UUID) error {
 
 	s.pushScanMetrics(metricsScanFinished, util.Ptr2Str(scan.Tag), util.Ptr2Str(scan.ExternalID), scanStats{})
 
-	return s.scansNotifier.Push(scan.ToScanNotification())
+	return s.scansNotifier.Push(scan.ToScanNotification(), nil)
 }
 
 func (s ScansService) notifyCheck(checkID uuid.UUID) error {
@@ -405,7 +405,15 @@ func (s ScansService) notifyCheck(checkID uuid.UUID) error {
 	if err != nil {
 		return err
 	}
-	return s.checksNotifier.Push(check.ToCheckNotification())
+	ctname := "unknown"
+	if check.ChecktypeName != nil {
+		ctname = *check.ChecktypeName
+	}
+	attributes := map[string]string{
+		"checktype_name": ctname,
+		"status":         check.Status,
+	}
+	return s.checksNotifier.Push(check.ToCheckNotification(), attributes)
 }
 
 func (s ScansService) updateScanStatus(id uuid.UUID) (int64, string, error) {
