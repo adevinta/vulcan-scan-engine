@@ -21,6 +21,7 @@ import (
 	"github.com/adevinta/vulcan-scan-engine/pkg/api"
 	"github.com/adevinta/vulcan-scan-engine/pkg/api/persistence/db"
 	"github.com/adevinta/vulcan-scan-engine/pkg/api/service"
+	"github.com/adevinta/vulcan-scan-engine/pkg/util"
 )
 
 // MaxScanAge Max number of days a scan be in "creating checks state"
@@ -74,7 +75,7 @@ type Store interface {
 // CheckNotifier is used by the ChecksRunner to send notifications when a Check
 // has ben created or sent to a queue.
 type CheckNotifier interface {
-	CheckUpdated(c api.Check)
+	CheckUpdated(c api.Check, programID string)
 }
 
 type Logger interface {
@@ -235,9 +236,8 @@ func (c *ChecksRunner) CreateScanChecks(id string) error {
 				if check.ID != id {
 					check.ID = id
 				} else {
-					// We only publish a change when if a check has been
-					// created.
-					c.checksListener.CheckUpdated(check)
+					// We only publish a change when if a check has been created.
+					c.checksListener.CheckUpdated(check, util.Ptr2Str(scan.ExternalID))
 				}
 
 				j, err := JobFromCheck(check)
