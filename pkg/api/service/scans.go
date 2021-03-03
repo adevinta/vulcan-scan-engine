@@ -46,6 +46,7 @@ const (
 	componentTag         = "component:scanengine"
 	scanCountMetric      = "vulcan.scan.count"
 	scanCompletionMetric = "vulcan.scan.completion"
+	checkCountMetric     = "vulcan.scan.check.count"
 	metricsScanCreated   = "created"
 	metricsScanFinished  = "finished"
 )
@@ -362,25 +363,25 @@ func (s ScansService) ProcessScanCheckNotification(ctx context.Context, msg []by
 	if count == 0 {
 		_ = level.Info(s.logger).Log("NoEffectProcessingCheckUpdate", string(msg))
 	}
-	count, scanState, err := s.updateScanStatus(scanID)
+	count, scan, err := s.updateScanStatus(scanID)
 	if err != nil {
 		return err
 	}
 
 	if count > 0 {
 		_ = level.Info(s.logger).Log("ScanStatusUpdated", string(msg))
-		_ = level.Debug(s.logger).Log("ScanStatusSet", scanID.String()+";"+scanState)
+		_ = level.Debug(s.logger).Log("ScanStatusSet", scanID.String()+";"+util.Ptr2Str(scan.Status))
 	}
 
 	// Propagate check message
-	err = s.notifyCheck(checkID)
+	err = s.notifyCheck(checkID, util.Ptr2Str(scan.ExternalID))
 	if err != nil {
 		return err
 	}
 
 	// If the current scans is finished and this check state update was the one
 	// that caused it to be in that state then we notify the scan is finished.
-	if count > 0 && scanState == ScanStatusFinished {
+	if count > 0 && *scan.Status == ScanStatusFinished {
 		err = s.notifyScan(scanID)
 		if err != nil {
 			return err
@@ -400,11 +401,14 @@ func (s ScansService) notifyScan(scanID uuid.UUID) error {
 	return s.scansNotifier.Push(scan.ToScanNotification(), nil)
 }
 
-func (s ScansService) notifyCheck(checkID uuid.UUID) error {
+func (s ScansService) notifyCheck(checkID uuid.UUID, programID string) error {
 	check, err := s.db.GetCheckByID(checkID)
 	if err != nil {
 		return err
 	}
+
+	s.pushCheckMetrics(check, programID)
+
 	ctname := "unknown"
 	if check.ChecktypeName != nil {
 		ctname = *check.ChecktypeName
@@ -416,7 +420,7 @@ func (s ScansService) notifyCheck(checkID uuid.UUID) error {
 	return s.checksNotifier.Push(check.ToCheckNotification(), attributes)
 }
 
-func (s ScansService) updateScanStatus(id uuid.UUID) (int64, string, error) {
+func (s ScansService) updateScanStatus(id uuid.UUID) (int64, api.Scan, error) {
 	scan, err := s.db.GetScanByID(id)
 	if errors.IsKind(err, errors.ErrNotFound) {
 		// We don't have any information regarding this scan, either because we
@@ -424,11 +428,11 @@ func (s ScansService) updateScanStatus(id uuid.UUID) (int64, string, error) {
 		// the check belongs to was not created using the scan engine. In any
 		// case we try to create an entry in the scans table with basic data.
 		count, errInit := s.initScanStatus(id)
-		return count, "", errInit
+		return count, api.Scan{}, errInit
 	}
 
 	if err != nil {
-		return 0, "", err
+		return 0, api.Scan{}, err
 	}
 
 	// TODO: Remove this branch when the scan engine removes support for creating
@@ -438,28 +442,29 @@ func (s ScansService) updateScanStatus(id uuid.UUID) (int64, string, error) {
 		// We don't know (hopefully yet) the number of the checks that compose
 		// the scan so we will just try to update the status of the scan to
 		// RUNNING.
-		status := ScanStatusRunning
+		statusRunning := ScanStatusRunning
+		scan.Status = &statusRunning
 		_ = level.Warn(s.logger).Log("UnableToCalculateScanProgress", id.String())
-		count, err := s.db.UpdateScan(id, api.Scan{ID: id, Status: &status}, []string{ScanStatusRunning})
-		return count, ScanStatusRunning, err
+		count, err := s.db.UpdateScan(id, api.Scan{ID: id, Status: scan.Status}, []string{ScanStatusRunning})
+		return count, scan, err
 	}
 
 	if *scan.CheckCount < 1 {
 		_ = level.Error(s.logger).Log(ErrAtLeastOneTargetAndChecktype)
-		return 0, "", ErrAtLeastOneTargetAndChecktype
+		return 0, api.Scan{}, ErrAtLeastOneTargetAndChecktype
 	}
 
 	n := *scan.CheckCount
 
-	if scan.Status != nil && *scan.Status == ScanStatusFinished {
-		return 0, ScanStatusFinished, nil
+	if scan.Status != nil && util.Ptr2Str(scan.Status) == ScanStatusFinished {
+		return 0, scan, nil
 	}
 
 	stats, err := s.db.GetScanStats(scan.ID)
 	if err != nil {
-		return 0, "", nil
+		return 0, api.Scan{}, err
 	}
-	update := statusFromChecks(id, stats, float32(n), s.logger)
+	update := statusFromChecks(scan, stats, float32(n), s.logger)
 	count, err := s.db.UpdateScan(id, update, []string{ScanStatusRunning})
 
 	// Push scan progress metrics
@@ -470,7 +475,7 @@ func (s ScansService) updateScanStatus(id uuid.UUID) (int64, string, error) {
 		Tags:  []string{componentTag, buildScanTag(util.Ptr2Str(scan.Tag), util.Ptr2Str(scan.ExternalID))},
 	})
 
-	return count, *update.Status, err
+	return count, update, err
 }
 
 func (s ScansService) initScanStatus(id uuid.UUID) (int64, error) {
@@ -501,7 +506,7 @@ func (s ScansService) pushScanMetrics(scanStatus, teamTag, programID string, sta
 
 	for checkTypeTag, count := range stats.NumberOfChecksPerChecktype {
 		s.metricsClient.Push(metrics.Metric{
-			Name:  "vulcan.scan.check.count",
+			Name:  checkCountMetric,
 			Typ:   metrics.Count,
 			Value: float64(count),
 			Tags:  []string{componentTag, scanTag, checkStatusTag, checkTypeTag},
@@ -509,6 +514,21 @@ func (s ScansService) pushScanMetrics(scanStatus, teamTag, programID string, sta
 	}
 }
 
+// pushCheckMetrics pushes metrics related to the check status.
+func (s ScansService) pushCheckMetrics(check api.Check, programID string) {
+	scanTag := buildScanTag(util.Ptr2Str(check.Tag), programID)
+	checkStatusTag := fmt.Sprint("checkstatus:", check.Status)
+	checktypeTag := fmt.Sprint("checktype:", check.ChecktypeName)
+
+	s.metricsClient.Push(metrics.Metric{
+		Name:  checkCountMetric,
+		Typ:   metrics.Count,
+		Value: 1,
+		Tags:  []string{componentTag, scanTag, checkStatusTag, checktypeTag},
+	})
+}
+
+// buildScanTag builds the metrics scan tag.
 func buildScanTag(teamTag string, programID string) string {
 	var teamLabel, programLabel string
 
@@ -532,7 +552,7 @@ func buildScanTag(teamTag string, programID string) string {
 	return fmt.Sprint("scan:", teamLabel, "-", programLabel)
 }
 
-func statusFromChecks(scanID uuid.UUID, checkStats map[string]int, n float32, l log.Logger) api.Scan {
+func statusFromChecks(scan api.Scan, checkStats map[string]int, n float32, l log.Logger) api.Scan {
 	var finished float32
 	anyAborted := false
 	level.Debug(l).Log("ScanStats", fmt.Sprintf("%+v", checkStats))
@@ -563,10 +583,8 @@ func statusFromChecks(scanID uuid.UUID, checkStats map[string]int, n float32, l 
 		p = finished / n
 		status = ScanStatusRunning
 	}
-	return api.Scan{
-		ID:       scanID,
-		Progress: &p,
-		Status:   &status,
-		EndTime:  endTime,
-	}
+	scan.Progress = &p
+	scan.Status = &status
+	scan.EndTime = endTime
+	return scan
 }
