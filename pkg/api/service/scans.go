@@ -522,7 +522,7 @@ func (s ScansService) pushScanMetrics(scanStatus, teamTag, programID string, sta
 func (s ScansService) pushCheckMetrics(check api.Check, programID string) {
 	scanTag := buildScanTag(util.Ptr2Str(check.Tag), programID)
 	checkStatusTag := fmt.Sprint("checkstatus:", check.Status)
-	checktypeTag := fmt.Sprint("checktype:", check.ChecktypeName)
+	checktypeTag := fmt.Sprint("checktype:", util.Ptr2Str(check.ChecktypeName))
 
 	s.metricsClient.Push(metrics.Metric{
 		Name:  checkCountMetric,
