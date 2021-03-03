@@ -373,10 +373,14 @@ func (s ScansService) ProcessScanCheckNotification(ctx context.Context, msg []by
 		_ = level.Debug(s.logger).Log("ScanStatusSet", scanID.String()+";"+util.Ptr2Str(scan.Status))
 	}
 
-	// Propagate check message
-	err = s.notifyCheck(checkID, util.Ptr2Str(scan.ExternalID))
-	if err != nil {
-		return err
+	// If check message contains a status, propagate it and push metrics.
+	// We have to skip the last check message sent by the agent which
+	// only contains the reference to the runtime log file.
+	if c.Status != "" {
+		err = s.notifyCheck(checkID, util.Ptr2Str(scan.ExternalID))
+		if err != nil {
+			return err
+		}
 	}
 
 	// If the current scans is finished and this check state update was the one
