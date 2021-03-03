@@ -316,7 +316,7 @@ type inMemChecksListener struct {
 	checks []api.Check
 }
 
-func (cl *inMemChecksListener) CheckUpdated(ch api.Check) {
+func (cl *inMemChecksListener) CheckUpdated(ch api.Check, programID string) {
 	if cl.checks == nil {
 		cl.checks = []api.Check{}
 	}
