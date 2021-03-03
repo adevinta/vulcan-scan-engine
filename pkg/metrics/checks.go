@@ -13,6 +13,10 @@ import (
 	"github.com/adevinta/vulcan-scan-engine/pkg/api"
 )
 
+const (
+	componentTag = "component:scanengine"
+)
+
 // Checks provides functionality to update checks metrics.
 type Checks struct {
 	Client metrics.Client
@@ -37,7 +41,7 @@ func (c *Checks) CheckUpdated(ch api.Check, programID string) {
 // Push increases by one the counter of checks created or with
 // a status change of a scan.
 func (c *Checks) push(team, programID, checktype, status string) {
-	componentTag := fmt.Sprint("scan:", buildScanTag(team, programID))
+	scanTag := buildScanTag(team, programID)
 	checktypeTag := fmt.Sprint("checktype:", strings.ToLower(checktype))
 	checkStatusTag := fmt.Sprint("checkstatus:", strings.ToLower(status))
 
@@ -45,7 +49,7 @@ func (c *Checks) push(team, programID, checktype, status string) {
 		Name:  "vulcan.scan.check.count",
 		Typ:   metrics.Count,
 		Value: 1,
-		Tags:  []string{componentTag, checktypeTag, checkStatusTag},
+		Tags:  []string{componentTag, scanTag, checktypeTag, checkStatusTag},
 	})
 }
 
