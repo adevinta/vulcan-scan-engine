@@ -338,11 +338,6 @@ func (s ScansService) ProcessScanCheckNotification(ctx context.Context, msg []by
 	c.Data = msg
 	progress := util.Ptr2Float(c.Progress)
 
-	dbCheck, err := s.db.GetCheckByID(checkID)
-	if err != nil {
-		return err
-	}
-
 	// Don't take into account inconsistent progress in a message with a
 	// terminal status.
 	if checkStates.IsTerminal(c.Status) && (progress != 1.0) {
@@ -359,28 +354,28 @@ func (s ScansService) ProcessScanCheckNotification(ctx context.Context, msg []by
 		return nil
 	}
 
-	count, err := s.db.UpsertCheck(scanID, id, c, checkStates.LessOrEqual(c.Status))
+	checkCount, err := s.db.UpsertCheck(scanID, id, c, checkStates.LessOrEqual(c.Status))
 	if err != nil {
 		return err
 	}
 
 	// If the upsert didn't affect any check we have to try to update the status.
-	if count == 0 {
+	if checkCount == 0 {
 		_ = level.Info(s.logger).Log("NoEffectProcessingCheckUpdate", string(msg))
 	}
-	count, scan, err := s.updateScanStatus(scanID)
+	scanCount, scan, err := s.updateScanStatus(scanID)
 	if err != nil {
 		return err
 	}
 
-	if count > 0 {
+	if scanCount > 0 {
 		_ = level.Info(s.logger).Log("ScanStatusUpdated", string(msg))
 		_ = level.Debug(s.logger).Log("ScanStatusSet", scanID.String()+";"+util.Ptr2Str(scan.Status))
 	}
 
 	// If check message implies a status change from the
 	// one stored in DB, propagate it and push metrics.
-	if c.Status != "" && c.Status != dbCheck.Status {
+	if c.Status != "" && checkCount > 0 {
 		err = s.notifyCheck(checkID, util.Ptr2Str(scan.ExternalID))
 		if err != nil {
 			return err
@@ -389,7 +384,7 @@ func (s ScansService) ProcessScanCheckNotification(ctx context.Context, msg []by
 
 	// If the current scans is finished and this check state update was the one
 	// that caused it to be in that state then we notify the scan is finished.
-	if count > 0 && *scan.Status == ScanStatusFinished {
+	if scanCount > 0 && *scan.Status == ScanStatusFinished {
 		err = s.notifyScan(scanID)
 		if err != nil {
 			return err
