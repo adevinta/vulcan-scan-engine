@@ -338,6 +338,11 @@ func (s ScansService) ProcessScanCheckNotification(ctx context.Context, msg []by
 	c.Data = msg
 	progress := util.Ptr2Float(c.Progress)
 
+	dbCheck, err := s.db.GetCheckByID(checkID)
+	if err != nil {
+		return err
+	}
+
 	// Don't take into account inconsistent progress in a message with a
 	// terminal status.
 	if checkStates.IsTerminal(c.Status) && (progress != 1.0) {
@@ -373,10 +378,9 @@ func (s ScansService) ProcessScanCheckNotification(ctx context.Context, msg []by
 		_ = level.Debug(s.logger).Log("ScanStatusSet", scanID.String()+";"+util.Ptr2Str(scan.Status))
 	}
 
-	// If check message contains a status, propagate it and push metrics.
-	// We have to skip the last check message sent by the agent which
-	// only contains the reference to the runtime log file.
-	if c.Status != "" {
+	// If check message implies a status change from the
+	// one stored in DB, propagate it and push metrics.
+	if c.Status != "" && c.Status != dbCheck.Status {
 		err = s.notifyCheck(checkID, util.Ptr2Str(scan.ExternalID))
 		if err != nil {
 			return err
