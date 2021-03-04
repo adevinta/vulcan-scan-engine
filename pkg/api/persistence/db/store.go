@@ -120,9 +120,9 @@ func (db DB) UpsertChildDocWithCondition(table string, parentID, id uuid.UUID, d
 	strExec := `INSERT INTO %s VALUES (?,?,?,?,?)
 		ON CONFLICT ON CONSTRAINT %s_pkey
 		DO UPDATE SET
-		data = ?, updated_at = ?
+		data = %s.data || ?, updated_at = ?
 		WHERE %s`
-	st := fmt.Sprintf(strExec, table, table, condition)
+	st := fmt.Sprintf(strExec, table, table, table, condition)
 	st = db.db.Rebind(st)
 	args := []interface{}{id, parentID, doc, d, d, doc, d}
 	args = append(args, params...)
@@ -214,6 +214,24 @@ func (db DB) GetChildDoc(table string, parentID, id uuid.UUID) ([]byte, error) {
 	return data, err
 }
 
+// GetParentIDDoc gets the parent id from a given ChildID
+func (db DB) GetParentIDDoc(table string, childID uuid.UUID) (uuid.UUID, error) {
+	strExec := `SELECT parent_id FROM %s WHERE id = ?`
+	st := fmt.Sprintf(strExec, table)
+	st = db.db.Rebind(st)
+	res, err := db.db.Query(st, childID)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	defer res.Close() // nolint
+	if !res.Next() {
+		return uuid.Nil, errors.NotFound(nil)
+	}
+	var id uuid.UUID
+	err = res.Scan(&id)
+	return id, err
+}
+
 // GetChildDocsStatsForField gets the stats of all the child documents belonging
 // to a given parentID. The type of the field must be marshalable into a string
 // by the scan method of the postgres driver.
@@ -246,6 +264,42 @@ func (db DB) GetChildDocsStatsForField(table, field string, parentID uuid.UUID) 
 		stats[vstat] = count
 	}
 	return stats, nil
+}
+
+// GetAllDocs gets all documents for a given table.
+func (db DB) GetAllDocs(table string) ([][]byte, error) {
+	return db.GetAllDocsWithLimit(table, 0, 0)
+}
+
+// GetAllDocsWithLimit returns all documents for a given table applying the given offset and limit.
+func (db DB) GetAllDocsWithLimit(table string, offset, limit uint32) ([][]byte, error) {
+	args := []interface{}{}
+	strExec := "SELECT data FROM %s ORDER BY created_at DESC"
+	if offset != 0 {
+		strExec += " OFFSET ?"
+		args = append(args, offset)
+	}
+	if limit != 0 {
+		strExec += " LIMIT ?"
+		args = append(args, limit)
+	}
+	st := fmt.Sprintf(strExec, table)
+	st = db.db.Rebind(st)
+	res, err := db.db.Query(st, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Close() // nolint
+	datas := [][]byte{}
+	for res.Next() {
+		data := []byte{}
+		err = res.Scan(&data)
+		if err != nil {
+			return [][]byte{}, err
+		}
+		datas = append(datas, data)
+	}
+	return datas, err
 }
 
 // GetChildDocs gets all the child documents of a given parent.
@@ -328,7 +382,7 @@ func (db DB) InsertChildDocIfNotExists(table string, parentID uuid.UUID, childID
 // GetDocsByField gets all documents that have a field in the specified path
 // with a given value. The results are sorted by creation time.
 func (db DB) GetDocsByField(table string, value string, path ...interface{}) ([][]byte, error) {
-	return db.GetDocsByFieldLimit(table, value, nil, path...)
+	return db.GetDocsByFieldLimit(table, value, 0, 0, path...)
 }
 
 // GetDocsByFieldLimit gets all documents that have a field in the specified
@@ -336,7 +390,7 @@ func (db DB) GetDocsByField(table string, value string, path ...interface{}) ([]
 // limited to the specified number of results. if limit the numbers of results
 // is outbounded. The functions always returns the results sorted by creation
 // time.
-func (db DB) GetDocsByFieldLimit(table string, value string, limit *uint32, path ...interface{}) ([][]byte, error) {
+func (db DB) GetDocsByFieldLimit(table string, value string, offset, limit uint32, path ...interface{}) ([][]byte, error) {
 	var params, st string
 	// TODO if an index is created in the table for a top level field in json
 	// column data we need to use the -> operator to allow postgres to use that
@@ -359,9 +413,13 @@ func (db DB) GetDocsByFieldLimit(table string, value string, limit *uint32, path
 	args = append(args, path...)
 	args = append(args, value)
 	st = st + " ORDER BY created_at DESC"
-	if limit != nil {
-		st = st + " LIMIT ?"
-		args = append(args, *limit)
+	if offset != 0 {
+		st += " OFFSET ?"
+		args = append(args, offset)
+	}
+	if limit != 0 {
+		st += " LIMIT ?"
+		args = append(args, limit)
 	}
 	st = db.db.Rebind(st)
 	res, err := db.db.Query(st, args...)
@@ -447,7 +505,7 @@ func (db DB) DeleteChildDocuments(id uuid.UUID, doc interface{}) error {
 	return db.DeleteChildDocs(tableName, id)
 }
 
-// CreateChildDocument creates a child document in the underlaying store
+// CreateChildDocument creates a child document in the underlaying store.
 func (db DB) CreateChildDocument(id uuid.UUID, doc interface{}, data []byte) (int64, error) {
 	tableName := reflect.TypeOf(doc).Name()
 	if tableName == "" {
@@ -485,6 +543,22 @@ func (db DB) UpsertChildDocumentWithData(parentID, id uuid.UUID, doc interface{}
 	tableName = tableName + "s"
 	tableName = strings.ToLower(tableName)
 	return db.UpsertChildDocWithCondition(tableName, parentID, id, data, condition, args...)
+}
+
+// GetAllDocsFromDocType returns the list of docs for the given doc type.
+func (db DB) GetAllDocsFromDocType(doc interface{}) ([][]byte, error) {
+	return db.GetAllDocsFromDocTypeWithLimit(doc, 0, 0)
+}
+
+// GetAllDocsFromDocTypeWithLimit returns the list of docs for the given doc type applying the given
+// offset and limit parameters.
+func (db DB) GetAllDocsFromDocTypeWithLimit(doc interface{}, offset, limit uint32) ([][]byte, error) {
+	val := reflect.ValueOf(doc)
+	tableName := reflect.Indirect(val).Type().Name()
+	// By convention the name of the type is the singular form of the table's name in lower case.
+	tableName = tableName + "s"
+	tableName = strings.ToLower(tableName)
+	return db.GetAllDocsWithLimit(tableName, offset, limit)
 }
 
 // GetDocByIDFromDocType returns a document given its id.
@@ -551,13 +625,13 @@ func (db DB) GetDocIDsWithCondFromDocType(doc interface{}, condition string, par
 // GetDocsByFieldLimitFromDocType returns an slice of documents with a given a value for a given field in data.
 // The results are sorted by creation time and limited to the number of results specified by the limit param.
 // The doc param must always be a pointer to a struct.
-func (db DB) GetDocsByFieldLimitFromDocType(doc interface{}, value string, limit uint32, path ...interface{}) ([][]byte, error) {
+func (db DB) GetDocsByFieldLimitFromDocType(doc interface{}, value string, offset, limit uint32, path ...interface{}) ([][]byte, error) {
 	val := reflect.ValueOf(doc)
 	tableName := reflect.Indirect(val).Type().Name()
 	// By convention the name of the type is the singular form of the table's name in lower case.
 	tableName = tableName + "s"
 	tableName = strings.ToLower(tableName)
-	return db.GetDocsByFieldLimit(tableName, value, &limit, path...)
+	return db.GetDocsByFieldLimit(tableName, value, offset, limit, path...)
 }
 
 // InsertChildDocIfNotExistsFromDocType this function inserts a new child doc,
@@ -570,6 +644,18 @@ func (db DB) InsertChildDocIfNotExistsFromDocType(doc interface{}, parentID, id 
 	tableName = tableName + "s"
 	tableName = strings.ToLower(tableName)
 	return db.InsertChildDocIfNotExists(tableName, parentID, id, index, data)
+}
+
+// GetParentID returns the parent ID of the first row with the given childID.
+func (db DB) GetParentID(childDoc interface{}, childID uuid.UUID) (uuid.UUID, error) {
+	tableName := reflect.TypeOf(childDoc).Name()
+	if tableName == "" {
+		return uuid.Nil, ErrAnonymousType
+	}
+	// By convention the name of the type is the singular form of table's name.
+	tableName = tableName + "s"
+	tableName = strings.ToLower(tableName)
+	return db.GetParentIDDoc(tableName, childID)
 }
 
 // Ping pings the underlaying db to check its connected and prepared to receive commands.

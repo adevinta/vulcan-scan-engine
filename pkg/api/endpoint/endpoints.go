@@ -20,21 +20,27 @@ type ScanEngineService interface {
 
 // Endpoints contains all available endpoints for this api
 type Endpoints struct {
-	Healthcheck         endpoint.Endpoint
-	CreateScan          endpoint.Endpoint
-	GetScan             endpoint.Endpoint
-	GetScanByExternalID endpoint.Endpoint
-	AbortScan           endpoint.Endpoint
+	Healthcheck   endpoint.Endpoint
+	CreateScan    endpoint.Endpoint
+	ListScans     endpoint.Endpoint
+	GetScan       endpoint.Endpoint
+	GetScanChecks endpoint.Endpoint
+	GetScanStats  endpoint.Endpoint
+	GetCheck      endpoint.Endpoint
+	AbortScan     endpoint.Endpoint
 }
 
 // MakeEndpoints initialize endpoints using the given service
-func MakeEndpoints(s ScanEngineService, createChecksAsync bool) *Endpoints {
+func MakeEndpoints(s ScanEngineService) *Endpoints {
 	return &Endpoints{
-		Healthcheck:         makeHealthcheckEndpoint(s),
-		CreateScan:          makeCreateScanEndpoint(s, createChecksAsync),
-		GetScan:             makeGetScanEndpoint(s),
-		GetScanByExternalID: makeGetScanByExternalIDEndpoint(s),
-		AbortScan:           makeAbortScanEndpoint(s),
+		Healthcheck:   makeHealthcheckEndpoint(s),
+		CreateScan:    makeCreateScanEndpoint(s),
+		ListScans:     makeListScansEndpoint(s),
+		GetScan:       makeGetScanEndpoint(s),
+		GetScanChecks: makeGetScanChecksEndpoint(s),
+		GetScanStats:  makeGetScanStatsEndpoint(s),
+		GetCheck:      makeGetCheckEndpoint(s),
+		AbortScan:     makeAbortScanEndpoint(s),
 	}
 }
 

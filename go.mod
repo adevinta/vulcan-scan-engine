@@ -4,7 +4,7 @@ go 1.13
 
 require (
 	github.com/adevinta/errors v0.0.0-20190715095242-ec69baa2d063
-	github.com/adevinta/vulcan-core-cli v0.0.0-20201117151025-b55c430606e9
+	github.com/adevinta/vulcan-core-cli v0.0.0-20210118133236-eaf613140792
 	github.com/adevinta/vulcan-metrics-client v0.0.0-20200617105830-6078a0e12ebd
 	github.com/armon/go-metrics v0.3.0 // indirect
 	github.com/aws/aws-sdk-go v1.30.8
@@ -33,4 +33,5 @@ require (
 	gopkg.in/go-playground/assert.v1 v1.2.1 // indirect
 	gopkg.in/go-playground/validator.v9 v9.31.0
 	gopkg.in/testfixtures.v2 v2.6.0
+	gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c
 )

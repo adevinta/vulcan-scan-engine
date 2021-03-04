@@ -14,26 +14,29 @@ import (
 
 	"github.com/adevinta/errors"
 	"github.com/adevinta/vulcan-scan-engine/pkg/api"
+	"github.com/adevinta/vulcan-scan-engine/pkg/util"
 )
 
 // ScanCreator defines the service interface required by the endpoint CreateScan
 type ScanCreator interface {
 	CreateScan(context.Context, *api.Scan) (uuid.UUID, error)
-	CreateScanChecksAsync(context.Context, *api.Scan) (uuid.UUID, error)
 }
 
 // ScanGetter defines the service interface required by the endpoint GetScan
 type ScanGetter interface {
-	GetScan(ctx context.Context, strID string) (api.Scan, error)
-	GetScansByExternalID(ctx context.Context, ID string, all bool) ([]api.Scan, error)
-	AbortScan(ctx context.Context, strID string) error
+	ListScans(ctx context.Context, offset, limit uint32) ([]api.Scan, error)
+	GetScan(ctx context.Context, scanID string) (api.Scan, error)
+	GetScanChecks(ctx context.Context, scanID string) ([]api.Check, error)
+	GetScansByExternalID(ctx context.Context, ID string, offset, limit uint32) ([]api.Scan, error)
+	GetScanStats(ctx context.Context, scanID string) ([]api.CheckStats, error)
+	GetCheck(ctx context.Context, checkID string) (api.Check, error)
+	AbortScan(ctx context.Context, scanID string) error
 }
 
 // ScanRequest defines the request accepted by CreateScan endpoint.
 type ScanRequest struct {
 	ID            string     `json:"id" urlvar:"id"`
 	ExternalID    string     `json:"external_id" urlquery:"external_id"`
-	All           string     `urlquery:"all"`
 	ScheduledTime *time.Time `json:"scheduled_time"`
 	// TODO: Remove TargetGroup and ChecktypeGroup when we deprecate the version 1
 	// of the endpoint for creating scans.
@@ -42,19 +45,24 @@ type ScanRequest struct {
 	TargetGroups    []api.TargetsChecktypesGroup `json:"target_groups"`
 	Trigger         string                       `json:"trigger"`
 	Tag             string                       `json:"tag,omitempty"`
+	Offset          string                       `urlquery:"offset"`
+	Limit           string                       `urlquery:"limit"`
 }
 
-// ScanResponse ...
+// ScanResponse represents the response
+// for a scan creation request.
 type ScanResponse struct {
 	ScanID string `json:"scan_id"`
 }
 
-// GetScansResponse ...
+// GetScansResponse represents the response
+// for a list scans request.
 type GetScansResponse struct {
 	Scans []GetScanResponse `json:"scans"`
 }
 
-// GetScanResponse  ...
+// GetScanResponse represents the response
+// for a get scan request.
 type GetScanResponse struct {
 	ID            string     `json:"id"`
 	ExternalID    string     `json:"external_id"`
@@ -66,23 +74,43 @@ type GetScanResponse struct {
 	Progress      *float32   `json:"progress"`
 	CheckCount    *int       `json:"check_count"`
 	ChecksCreated *int       `json:"checks_created"`
+	AbortedAt     *time.Time `json:"aborted_at,omitempty"`
 }
 
-// Check Represents the data send for each check belonging to a scan.
-type Check struct {
-	ChecktypeID string    `json:"checktype_id"`
-	ID          uuid.UUID `json:"id"`
-	Options     string    `json:"options"`
-	Progress    float64   `json:"progress"`
-	Raw         string    `json:"raw"`
-	Report      string    `json:"report"`
-	ScanID      string    `json:"scan_id"`
-	Status      string    `json:"status"`
-	Target      string    `json:"target"`
-	Webhook     string    `json:"webhook"`
+// GetScanStatsResponse represents the response
+// for a get scan checks stats request.
+type GetScanStatsResponse struct {
+	Checks []api.CheckStats `json:"checks"`
 }
 
-func makeCreateScanEndpoint(s ScanCreator, createChecksAsync bool) endpoint.Endpoint {
+// CheckRequest specifies the request for
+// the get check endpoint.
+type CheckRequest struct {
+	ID string `json:"id" urlvar:"id"`
+}
+
+// GetCheckResponse represents the response
+// for a get check request.
+type GetCheckResponse struct {
+	ID            string `json:"id"`
+	Status        string `json:"status"`
+	Target        string `json:"target"`
+	ChecktypeName string `json:"checktype_name,omitempty"`
+	Image         string `json:"image,omitempty"`
+	Options       string `json:"options,omitempty"`
+	Report        string `json:"report,omitempty"`
+	Raw           string `json:"raw,omitempty"`
+	Tag           string `json:"tag,omitempty"`
+	Assettype     string `json:"assettype,omitempty"`
+}
+
+// GetChecksResponse represents the response
+// for a get scan checks request.
+type GetChecksResponse struct {
+	Checks []GetCheckResponse `json:"checks"`
+}
+
+func makeCreateScanEndpoint(s ScanCreator) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
 		requestBody, ok := request.(*ScanRequest)
 		if !ok {
@@ -95,27 +123,52 @@ func makeCreateScanEndpoint(s ScanCreator, createChecksAsync bool) endpoint.Endp
 			ScheduledTime: requestBody.ScheduledTime,
 		}
 
-		// If the request specifies the field TargetGroups the request is for the version 2
-		// of the endpoint that allows to specify multiple tuples of checktypes and targets.
-		// If not we assume the request is for the old endpoint version to be deprecated.
-		if len(requestBody.TargetGroups) > 0 {
-			scan.TargetGroups = &requestBody.TargetGroups
-		} else {
-			scan.ChecktypesGroup = &requestBody.ChecktypesGroup
-			scan.Targets = &requestBody.TargetGroup
-		}
+		scan.TargetGroups = &requestBody.TargetGroups
+
 		// Creates the scan
-		var id uuid.UUID
-		if !createChecksAsync {
-			id, err = s.CreateScan(ctx, scan)
-		} else {
-			id, err = s.CreateScanChecksAsync(ctx, scan)
-		}
+		id, err := s.CreateScan(ctx, scan)
 		if err != nil {
 			return nil, err
 		}
 		scanResponse := ScanResponse{id.String()}
 		return Created{scanResponse}, nil
+	}
+}
+
+func makeListScansEndpoint(s ScanGetter) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
+		req, ok := request.(*ScanRequest)
+		if !ok {
+			return nil, errors.Assertion("Type assertion failed")
+		}
+
+		var offset, limit uint32
+		var offsetErr, limitErr error
+		if req.Offset != "" {
+			offset, offsetErr = util.Str2Uint32(req.Offset)
+		}
+		if req.Limit != "" {
+			limit, limitErr = util.Str2Uint32(req.Limit)
+		}
+		if offsetErr != nil || limitErr != nil {
+			return nil, errors.Assertion("Invalid offset or limit")
+		}
+
+		var scans []api.Scan
+		if req.ExternalID == "" {
+			scans, err = s.ListScans(ctx, offset, limit)
+		} else {
+			scans, err = s.GetScansByExternalID(ctx, req.ExternalID, offset, limit)
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		resp, err := buildGetScansResponse(scans)
+		if err != nil {
+			return nil, err
+		}
+		return Ok{resp}, nil
 	}
 }
 
@@ -130,7 +183,60 @@ func makeGetScanEndpoint(s ScanGetter) endpoint.Endpoint {
 		if err != nil {
 			return nil, err
 		}
-		resp, err := BuildScanResponse(scan)
+		resp, err := buildGetScanResponse(scan)
+		if err != nil {
+			return nil, err
+		}
+		return Ok{resp}, nil
+	}
+}
+
+func makeGetScanChecksEndpoint(s ScanGetter) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
+		requestBody, ok := request.(*ScanRequest)
+		if !ok {
+			return nil, errors.Assertion("Type assertion failed")
+		}
+
+		checks, err := s.GetScanChecks(ctx, requestBody.ID)
+		if err != nil {
+			return nil, err
+		}
+		resp, err := buildChecksResponse(checks)
+		if err != nil {
+			return nil, err
+		}
+		return Ok{resp}, nil
+	}
+}
+
+func makeGetScanStatsEndpoint(s ScanGetter) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
+		requestBody, ok := request.(*ScanRequest)
+		if !ok {
+			return nil, errors.Assertion("Type assertion failed")
+		}
+
+		stats, err := s.GetScanStats(ctx, requestBody.ID)
+		if err != nil {
+			return nil, err
+		}
+		return Ok{GetScanStatsResponse{stats}}, nil
+	}
+}
+
+func makeGetCheckEndpoint(s ScanGetter) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
+		requestBody, ok := request.(*CheckRequest)
+		if !ok {
+			return nil, errors.Assertion("Type assertion failed")
+		}
+
+		check, err := s.GetCheck(ctx, requestBody.ID)
+		if err != nil {
+			return nil, err
+		}
+		resp, err := buildCheckResponse(check)
 		if err != nil {
 			return nil, err
 		}
@@ -148,31 +254,11 @@ func makeAbortScanEndpoint(s ScanGetter) endpoint.Endpoint {
 		if err != nil {
 			return nil, err
 		}
-		return Accepted{}, nil
+		return Ok{}, nil
 	}
 }
 
-func makeGetScanByExternalIDEndpoint(s ScanGetter) endpoint.Endpoint {
-	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
-		requestBody, ok := request.(*ScanRequest)
-		if !ok {
-			return nil, errors.Assertion("Type assertion failed")
-		}
-		all := requestBody.All == "true"
-		scans, err := s.GetScansByExternalID(ctx, requestBody.ExternalID, all)
-		if err != nil {
-			return nil, err
-		}
-		resp, err := BuildScanByExternalIDResponse(scans)
-		if err != nil {
-			return nil, err
-		}
-		return Ok{resp}, nil
-	}
-}
-
-// BuildScanResponse Builds a scan response from information regarding a scan.
-func BuildScanResponse(scan api.Scan) (GetScanResponse, error) {
+func buildGetScanResponse(scan api.Scan) (GetScanResponse, error) {
 	// The field StartTime is mandatory
 	if scan.StartTime == nil {
 		return GetScanResponse{}, errors.Default(fmt.Sprintf("scan start time is nil for scan %s", scan.ID.String()))
@@ -199,22 +285,50 @@ func BuildScanResponse(scan api.Scan) (GetScanResponse, error) {
 		Progress:      scan.Progress,
 		CheckCount:    scan.CheckCount,
 		ChecksCreated: scan.ChecksCreated,
+		AbortedAt:     scan.AbortedAt,
 	}
 	return resp, nil
 }
 
-// BuildScanByExternalIDResponse returns an slice of Scans responses given a list of scans and its corresponding
-// checks.
-func BuildScanByExternalIDResponse(scans []api.Scan) (GetScansResponse, error) {
+func buildGetScansResponse(scans []api.Scan) (GetScansResponse, error) {
 	scansInfo := GetScansResponse{
 		Scans: []GetScanResponse{},
 	}
 	for _, s := range scans {
-		resp, err := BuildScanResponse(s)
+		resp, err := buildGetScanResponse(s)
 		if err != nil {
 			return GetScansResponse{}, err
 		}
 		scansInfo.Scans = append(scansInfo.Scans, resp)
 	}
 	return scansInfo, nil
+}
+
+func buildCheckResponse(c api.Check) (GetCheckResponse, error) {
+	return GetCheckResponse{
+		ID:            c.ID,
+		Status:        c.Status,
+		Target:        c.Target,
+		ChecktypeName: util.Ptr2Str(c.ChecktypeName),
+		Image:         util.Ptr2Str(c.Image),
+		Options:       util.Ptr2Str(c.Options),
+		Report:        util.Ptr2Str(c.Report),
+		Raw:           util.Ptr2Str(c.Raw),
+		Tag:           util.Ptr2Str(c.Tag),
+		Assettype:     util.Ptr2Str(c.Assettype),
+	}, nil
+}
+
+func buildChecksResponse(checks []api.Check) (GetChecksResponse, error) {
+	checksResp := GetChecksResponse{
+		Checks: []GetCheckResponse{},
+	}
+	for _, c := range checks {
+		check, err := buildCheckResponse(c)
+		if err != nil {
+			return GetChecksResponse{}, err
+		}
+		checksResp.Checks = append(checksResp.Checks, check)
+	}
+	return checksResp, nil
 }

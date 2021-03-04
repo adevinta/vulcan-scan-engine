@@ -11,7 +11,9 @@ import (
 	"os"
 	"os/exec"
 	"reflect"
+	"strconv"
 	"strings"
+	"time"
 
 	// This package is intended to be used by tests in other packages so they don't have to interact
 	// directly with the db so makes sense to import the driver here.
@@ -152,4 +154,42 @@ func EnsureDB(conn string) (bool, error) {
 		return false, err
 	}
 	return true, nil
+}
+
+func Str2Uint32(str string) (uint32, error) {
+	n, err := strconv.ParseUint(str, 10, 32)
+	if err != nil {
+		return 0, err
+	}
+	return uint32(n), nil
+}
+
+func Ptr2Str(p *string) string {
+	if p == nil {
+		return ""
+	}
+	return *p
+}
+
+// Ptr2Float returns the value passed in if it isn't nil.
+// Returns 0 otherwise.
+func Ptr2Float(val *float32) float32 {
+	if val == nil {
+		return 0
+	}
+	return *val
+}
+
+func Ptr2Time(t *time.Time) time.Time {
+	if t == nil {
+		return time.Time{}
+	}
+	return *t
+}
+
+func Ptr2Int(i *int) int {
+	if i == nil {
+		return 0
+	}
+	return *i
 }

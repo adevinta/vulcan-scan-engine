@@ -29,11 +29,14 @@ const (
 
 // Handlers contains all available handlers for this api
 type Handlers struct {
-	Healthcheck         http.Handler
-	CreateScan          http.Handler
-	GetScan             http.Handler
-	AbortScan           http.Handler
-	GetScanByExternalID http.Handler
+	Healthcheck   http.Handler
+	CreateScan    http.Handler
+	ListScans     http.Handler
+	GetScan       http.Handler
+	GetScanChecks http.Handler
+	GetScanStats  http.Handler
+	GetCheck      http.Handler
+	AbortScan     http.Handler
 }
 
 // MakeHandlers returns initialized handlers
@@ -69,11 +72,14 @@ func MakeHandlers(e *endpoint.Endpoints, logger kitlog.Logger) *Handlers {
 	}
 
 	return &Handlers{
-		Healthcheck:         newServer(e.Healthcheck, makeDecodeRequestFunc(struct{}{}), "Healthcheck"),
-		CreateScan:          newServer(e.CreateScan, makeDecodeRequestFunc(endpoint.ScanRequest{}), "CreateScan"),
-		GetScan:             newServer(e.GetScan, makeDecodeRequestFunc(endpoint.ScanRequest{}), "GetScan"),
-		AbortScan:           newServer(e.AbortScan, makeDecodeRequestFunc(endpoint.ScanRequest{}), "AbortScan"),
-		GetScanByExternalID: newServer(e.GetScanByExternalID, makeDecodeRequestFunc(endpoint.ScanRequest{}), "GetScanByExternalID"),
+		Healthcheck:   newServer(e.Healthcheck, makeDecodeRequestFunc(struct{}{}), "Healthcheck"),
+		CreateScan:    newServer(e.CreateScan, makeDecodeRequestFunc(endpoint.ScanRequest{}), "CreateScan"),
+		ListScans:     newServer(e.ListScans, makeDecodeRequestFunc(endpoint.ScanRequest{}), "ListScans"),
+		GetScan:       newServer(e.GetScan, makeDecodeRequestFunc(endpoint.ScanRequest{}), "GetScan"),
+		GetScanChecks: newServer(e.GetScanChecks, makeDecodeRequestFunc(endpoint.ScanRequest{}), "GetScanChecks"),
+		GetScanStats:  newServer(e.GetScanStats, makeDecodeRequestFunc(endpoint.ScanRequest{}), "GetScanStats"),
+		GetCheck:      newServer(e.GetCheck, makeDecodeRequestFunc(endpoint.CheckRequest{}), "GetCheck"),
+		AbortScan:     newServer(e.AbortScan, makeDecodeRequestFunc(endpoint.ScanRequest{}), "AbortScan"),
 	}
 }
 

@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"os/user"
 	"path"
 	"sync"
 	"syscall"
@@ -33,10 +32,12 @@ import (
 	"github.com/adevinta/vulcan-scan-engine/pkg/api/persistence/migrations"
 	"github.com/adevinta/vulcan-scan-engine/pkg/api/service"
 	"github.com/adevinta/vulcan-scan-engine/pkg/api/transport"
+	checkmetrics "github.com/adevinta/vulcan-scan-engine/pkg/metrics"
 	"github.com/adevinta/vulcan-scan-engine/pkg/notify"
 	"github.com/adevinta/vulcan-scan-engine/pkg/queue"
 	"github.com/adevinta/vulcan-scan-engine/pkg/scans"
 	"github.com/adevinta/vulcan-scan-engine/pkg/scheduler"
+	"github.com/adevinta/vulcan-scan-engine/pkg/stream"
 )
 
 var (
@@ -100,75 +101,6 @@ func init() {
 	}
 }
 
-type serverConfig struct {
-	Port string
-}
-
-type dbConfig struct {
-	ConnString       string `mapstructure:"connection_string"`
-	MigrationsSubBir string `mapstructure:"migrations_subdir"`
-}
-
-type vulcanCoreAPIConfig struct {
-	Schema              string
-	Host                string
-	EnableAsyncCreation bool `mapstructure:"enable_async_creation"`
-}
-
-type logConfig struct {
-	Level string
-}
-
-type metricsConfig struct {
-	Enabled bool
-}
-
-type checkCreatorConfig struct {
-	NumOfWorkers int `mapstructure:"num_of_workers"`
-	// In seconds.
-	Period int `mapstructure:"period"`
-}
-
-type config struct {
-	Log           logConfig
-	Server        serverConfig
-	DB            dbConfig
-	Vulcan        vulcanCoreAPIConfig
-	SQS           queue.Config
-	SNS           notify.Config
-	SNSChecks     notify.Config      `mapstructure:"sns_checks"`
-	ChecksCreator checkCreatorConfig `mapstructure:"check_creator"`
-	Metrics       metricsConfig
-}
-
-func initConfig() {
-	if cfgFile != "" {
-		// Use config file from the flag.
-		viper.SetConfigFile(cfgFile)
-	} else {
-		// Find home directory.
-		usr, err := user.Current()
-		if err != nil {
-			fmt.Println("Can't get current user:", err)
-			os.Exit(1)
-		}
-
-		// Search config in home directory with name ".vulcan-scan-engine" (without extension).
-		viper.AddConfigPath(usr.HomeDir)
-		viper.SetConfigName(".vulcan-scan-engine")
-	}
-
-	if err := viper.ReadInConfig(); err != nil {
-		fmt.Println("Can't read config:", err)
-		os.Exit(1)
-	}
-
-	if err := viper.Unmarshal(&cfg); err != nil {
-		fmt.Println("Can't decode config:", err)
-		os.Exit(1)
-	}
-}
-
 func startServer() error {
 
 	httpAddr := fmt.Sprintf(":%v", cfg.Server.Port)
@@ -205,14 +137,6 @@ func startServer() error {
 		return err
 	}
 	st := persistence.NewPersistence(db)
-	mux := http.NewServeMux()
-
-	notifier, err := notify.NewSNSNotifier(cfg.SNS, logger)
-	if err != nil {
-		return err
-	}
-
-	scanNotifier := notify.NewScanNotifier(notifier)
 
 	apiClient := newVulcanCoreAPIClient(cfg.Vulcan)
 
@@ -221,37 +145,53 @@ func startServer() error {
 		return err
 	}
 
-	var (
-		cCreator *scans.ChecksCreator
-		sch      *scheduler.Scheduler
-	)
-	if cfg.Vulcan.EnableAsyncCreation {
-		// If the AsyncCreation is enabled the SNSNotifier must be activated.
-		cfg.SNSChecks.Enabled = true
-		cn, err := notify.NewSNSNotifier(cfg.SNSChecks, logger)
-		if err != nil {
-			return err
-		}
-		checksNotifier := notify.NewCheckNotifier(cn)
-		cCreator = scans.NewChecksCreator(st, checksNotifier, logger)
-		// Try to create possible pending scan checks without having to wait
-		// until the next scheduled task runs.
-		go func() {
-			err := cCreator.CreateIncompleteScansChecks()
-			if err != nil {
-				logger.Log("CreateIncompleteScanChecksError", err.Error())
-			}
-		}()
-		// Create the workers that will run each time period.
-		sch = scheduler.NewScheduler(logger)
-		for i := 0; i < cfg.ChecksCreator.NumOfWorkers; i++ {
-			t := &scans.ChecksCreatorTask{ChecksCreator: cCreator}
-			p := time.Duration(cfg.ChecksCreator.Period) * time.Second
-			sch.AddTask(t, p)
-		}
+	checkMetrics := &checkmetrics.Checks{Client: metricsClient}
+
+	scansNotifier, err := notify.NewSNSNotifier(cfg.ScansSNS, logger)
+	if err != nil {
+		return err
+	}
+	checksNotifier, err := notify.NewSNSNotifier(cfg.ChecksSNS, logger)
+	if err != nil {
+		return err
 	}
 
-	scanService := service.New(logger, st, apiClient, scanNotifier, metricsClient, cCreator)
+	var (
+		creator interface {
+			CreateScanChecks(id string) error
+			CreateIncompleteScansChecks() error
+		}
+		sch *scheduler.Scheduler
+	)
+
+	streamClient := stream.NewClient(cfg.Stream.URL)
+
+	producer, err := queue.NewMultiSQSProducer(cfg.CTQueues.ARNs(), logger)
+	if err != nil {
+		return err
+	}
+	jobsSender, err := scans.NewJobQueueSender(producer, cfg.CTQueues.Names())
+	if err != nil {
+		return err
+	}
+	creator = scans.NewJobsCreator(st, jobsSender, apiClient, checkMetrics, logger)
+	// Try to create possible pending scan checks without having to wait
+	// until the next scheduled task runs.
+	go func() {
+		err := creator.CreateIncompleteScansChecks()
+		if err != nil {
+			logger.Log("CreateIncompleteScanChecksError", err.Error())
+		}
+	}()
+	// Create the workers that will run each time period.
+	sch = scheduler.NewScheduler(logger)
+	for i := 0; i < cfg.ChecksCreator.NumOfWorkers; i++ {
+		t := &scans.ChecksRunnerTask{ChecksRunnerForTask: creator}
+		p := time.Duration(cfg.ChecksCreator.Period) * time.Second
+		sch.AddTask(t, p)
+	}
+
+	scanService := service.New(logger, st, apiClient, metricsClient, creator, scansNotifier, checksNotifier, streamClient)
 
 	healthCheckService := service.HealthcheckService{
 		DB: db,
@@ -267,13 +207,14 @@ func startServer() error {
 		healthCheckService,
 	}
 
-	endpoints := endpoint.MakeEndpoints(scanEngineSrv, cfg.Vulcan.EnableAsyncCreation)
+	endpoints := endpoint.MakeEndpoints(scanEngineSrv)
 
 	addLoggingMiddleware(endpoints, logger)
 	if cfg.Metrics.Enabled {
 		addMetricsMiddleware(endpoints, metricsClient)
 	}
 
+	mux := http.NewServeMux()
 	handlers := transport.AttachRoutes(transport.MakeHandlers(endpoints, logger))
 	mux.Handle("/v1/", handlers)
 	http.Handle("/", mux)
@@ -335,8 +276,11 @@ func addMetricsMiddleware(endpoints *endpoint.Endpoints, metricsClient metrics.C
 	withMetrics := metricsMiddleware.Measure()
 
 	endpoints.CreateScan = withMetrics(endpoints.CreateScan)
+	endpoints.ListScans = withMetrics(endpoints.ListScans)
 	endpoints.GetScan = withMetrics(endpoints.GetScan)
-	endpoints.GetScanByExternalID = withMetrics(endpoints.GetScanByExternalID)
+	endpoints.GetScanChecks = withMetrics(endpoints.GetScanChecks)
+	endpoints.GetScanStats = withMetrics(endpoints.GetScanStats)
+	endpoints.GetCheck = withMetrics(endpoints.GetCheck)
 	endpoints.AbortScan = withMetrics(endpoints.AbortScan)
 }
 
@@ -344,12 +288,15 @@ func addLoggingMiddleware(endpoints *endpoint.Endpoints, logger log.Logger) {
 	withLog := middleware.Logging(logger)
 
 	endpoints.CreateScan = withLog(endpoints.CreateScan)
+	endpoints.ListScans = withLog(endpoints.ListScans)
 	endpoints.GetScan = withLog(endpoints.GetScan)
-	endpoints.GetScanByExternalID = withLog(endpoints.GetScanByExternalID)
+	endpoints.GetScanChecks = withLog(endpoints.GetScanChecks)
+	endpoints.GetScanStats = withLog(endpoints.GetScanStats)
+	endpoints.GetCheck = withLog(endpoints.GetCheck)
 	endpoints.AbortScan = withLog(endpoints.AbortScan)
 }
 
-func newVulcanCoreAPIClient(config vulcanCoreAPIConfig) *client.Client {
+func newVulcanCoreAPIClient(config checktypesInformer) *client.Client {
 	httpClient := newHTTPClient()
 	c := client.New(goaclient.HTTPClientDoer(httpClient))
 	c.Client.Scheme = config.Schema

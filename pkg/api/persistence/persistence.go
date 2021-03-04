@@ -14,7 +14,22 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
-// Persistence implements a
+type ScansStore interface {
+	CreateScan(id uuid.UUID, scan api.Scan) (int64, error)
+	UpsertCheck(scanID, id uuid.UUID, check api.Check, updateStates []string) (int64, error)
+	GetScans(offset, limit uint32) ([]api.Scan, error)
+	GetScanChecks(scanID uuid.UUID) ([]api.Check, error)
+	GetScanByID(id uuid.UUID) (api.Scan, error)
+	GetScanStats(scanID uuid.UUID) (map[string]int, error)
+	UpdateScan(id uuid.UUID, scan api.Scan, updateStates []string) (int64, error)
+	GetScansByExternalID(ID string, offset, limit uint32) ([]api.Scan, error)
+	GetCheckByID(id uuid.UUID) (api.Check, error)
+	DeleteScanChecks(scanID uuid.UUID) error
+	GetScanIDForCheck(ID uuid.UUID) (uuid.UUID, error)
+}
+
+// Persistence implements ScansStore interface
+// by using the underlying document store.
 type Persistence struct {
 	store db.DB
 }
@@ -104,6 +119,24 @@ func (db Persistence) UpsertCheck(scanID, id uuid.UUID, check api.Check, updateS
 	return db.store.UpsertChildDocumentWithData(scanID, id, check, check.Data, condition, args...)
 }
 
+// GetScans returns the list of scans.
+func (db Persistence) GetScans(offset, limit uint32) ([]api.Scan, error) {
+	datas, err := db.store.GetAllDocsFromDocTypeWithLimit(api.Scan{}, offset, limit)
+	if err != nil {
+		return []api.Scan{}, err
+	}
+	res := []api.Scan{}
+	for _, v := range datas {
+		c := api.Scan{}
+		err := json.Unmarshal(v, &c)
+		if err != nil {
+			return []api.Scan{}, err
+		}
+		res = append(res, c)
+	}
+	return res, nil
+}
+
 // GetScanByID returns a scan given its ID.
 func (db Persistence) GetScanByID(id uuid.UUID) (api.Scan, error) {
 	s := api.Scan{}
@@ -135,23 +168,29 @@ func (db Persistence) DeleteScanChecks(scanID uuid.UUID) error {
 	return db.store.DeleteChildDocuments(scanID, api.Check{})
 }
 
-// GetChecksStatusStats the number of checks belonging to a scan that are in a
-// concrete status.
-func (db Persistence) GetChecksStatusStats(scanID uuid.UUID) (map[string]int, error) {
+// GetCheckByID returns the check for the given ID.
+func (db Persistence) GetCheckByID(id uuid.UUID) (api.Check, error) {
+	c := api.Check{}
+	err := db.store.GetDocByIDFromDocType(&c, id)
+	return c, err
+}
+
+// GetScanStats returns the number of checks by status for the given scan.
+func (db Persistence) GetScanStats(scanID uuid.UUID) (map[string]int, error) {
 	return db.store.GetChildDocsStatsFromDocType(api.Check{}, "status", scanID)
 }
 
-// GetScansByExternalIDWithLimit returns all the scans with a given ExternalID
-func (db Persistence) GetScansByExternalIDWithLimit(ID string, limit *uint32) ([]api.Scan, error) {
+// GetScansByExternalID returns scans with a given ExternalID applying the given offset and limit.
+func (db Persistence) GetScansByExternalID(ID string, offset, limit uint32) ([]api.Scan, error) {
 	var (
 		err   error
 		datas [][]byte
 		scan  api.Scan
 	)
-	if limit == nil {
+	if offset == 0 && limit == 0 {
 		datas, err = db.store.GetDocsByFieldFromDocType(&scan, `"`+ID+`"`, `external_id`)
 	} else {
-		datas, err = db.store.GetDocsByFieldLimitFromDocType(&scan, `"`+ID+`"`, *limit, `external_id`)
+		datas, err = db.store.GetDocsByFieldLimitFromDocType(&scan, `"`+ID+`"`, offset, limit, `external_id`)
 	}
 	if err != nil {
 		return []api.Scan{}, err
@@ -186,7 +225,17 @@ func (db Persistence) InsertCheckIfNotExists(c api.Check) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	data, err := json.Marshal(c)
+	if err != nil {
+		return "", err
+	}
+	c.Data = data
 	return db.store.InsertChildDocIfNotExistsFromDocType(c, sID, id, index, c.Data)
+}
+
+func (db Persistence) GetScanIDForCheck(ID uuid.UUID) (uuid.UUID, error) {
+	c := api.Check{}
+	return db.store.GetParentID(c, ID)
 }
 
 func (db Persistence) GetCreatingScans() ([]string, error) {

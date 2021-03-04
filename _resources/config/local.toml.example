@@ -12,10 +12,8 @@ migrations_subdir ="db"
 [vulcan]
 schema = "https"
 host = "persistence.vulcan.com"
-enable_async_creation = true
 
 [sqs]
-disabled = false
 number_of_processors = 1
 log_messages = false
 polling_interval = 10
@@ -23,10 +21,6 @@ wait_time = 20
 timeout = 30
 queue_arn = "arn:aws:sqs::xxx:123456789012:yyy"
 endpoint = ""
-
-[sns]
-topic_arn = "arn:aws:sns::xxx:123456789012:yyy"
-enabled = "false"
 
 [sns_checks]
 # topic_arn = "arn:aws:sns::xxx:123456789012:yyy"

@@ -16,10 +16,36 @@ produces:
   - application/json
 paths:
   /scans:
+    get:
+      tags:
+        - Scans
+      summary: List scans
+      description: List scans
+      operationId: Scans
+      produces:
+        - application/json
+      parameters:
+        - in: query
+          name: external_id
+          type: string
+          description: The external_id of the scans
+        - in: query
+          name: offset
+          type: integer
+          description: List offset
+        - in: query
+          name: limit
+          type: integer
+          description: List limit
+      responses:
+        "200":
+          description: ""
+          schema:
+            $ref: "#/definitions/ListScans"
     post:
       tags:
         - Scans
-      summary: ScansPost
+      summary: Create scan
       description: Create a scan
       operationId: ScansPost
       consumes: []
@@ -44,11 +70,11 @@ paths:
           description: Status 200
           schema:
             $ref: "#/definitions/CreateScanResponse"
-  "/scans/{scan_id}":
+  /scans/{scan_id}:
     get:
       tags:
         - Scans
-      summary: Get a scan given an ID
+      summary: Get a scan by ID
       description: A
       operationId: ScanByIDGet
       produces:
@@ -64,41 +90,75 @@ paths:
         in: path
         required: true
         type: string
-  /scans/:
+  /scans/{scan_id}/checks:
     get:
       tags:
         - Scans
-      summary: Gets the scans with a given external_id value
-      description: Gets scans with a given external_id value
-      operationId: ScansByExternalID
-      produces:
-        - application/json
-      parameters:
-        - in: query
-          name: external_id
-          type: string
-          description: The external_id of the scans
+      summary: Gets checks for a scan
+      description: ""
+      operationId: ListChecks
       responses:
         "200":
           description: ""
           schema:
-            $ref: "#/definitions/GetScanByExternalID"
-  "/scans/{scan_id}/abort":
+            $ref: "#/definitions/ListChecks"
+    parameters:
+      - name: scan_id
+        in: path
+        required: true
+        type: string
+  /scans/{scan_id}/stats:
+    get:
+      tags:
+        - Scans
+      summary: Get scan stats
+      description: Get check status stats for a scan
+      operationId: ScanStats
+      produces:
+        - application/json
+      parameters:
+      - name: scan_id
+        in: path
+        required: true
+        type: string
+      responses:
+        "200":
+          description: ""
+          schema:
+            $ref: "#/definitions/ScanStats"
+  /scans/{scan_id}/abort:
     post:
       tags:
         - Scans
-      summary: Aborts a scan given an ID
+      summary: Aborts a scan by ID
       description: ""
       operationId: AbortScan
       responses:
-        "202":
-          description: Scan correctly signaled to be aborted.
+        "200":
+          description: Scan correctly aborted.
         "409":
-          description: Error scan already signaled to be aborted.
+          description: Error scan is already in terminal status.
         "404":
           description: Error scan not found
     parameters:
       - name: scan_id
+        in: path
+        required: true
+        type: string
+  /checks/{check_id}:
+    get:
+      tags:
+        - Scans
+      summary: Gets a check by ID
+      description: ""
+      operationId: GetCheck
+      responses:
+        "200":
+          description: ""
+          schema:
+            $ref: "#/definitions/GetCheck"
+    parameters:
+      - name: check_id
         in: path
         required: true
         type: string
@@ -177,7 +237,6 @@ definitions:
         $ref: "#/definitions/TargetGroup"
       checktypes_group:
         $ref: "#/definitions/ChecktypesGroups"
-
   TargetGroup:
     type: object
     required:
@@ -274,6 +333,55 @@ definitions:
       check_count:
         type: integer
         description: "number of checks in the scan"
+  GetCheck:
+    type: object
+    required:
+      - ID
+      - Status
+      - Target
+      - Checktype Name
+      - Image
+    properties:
+      id:
+        type: string
+        description: ""
+        example: dd83da60-76bd-11eb-afc5-ceb90fec113b
+      status:
+        type: string
+        description: ""
+        example: FINISHED
+      target:
+        type: string
+        description: ""
+        example: adevinta.com
+      checktype_name:
+        type: string
+        description: ""
+        example: vulcan-tls
+      image:
+        type: string
+        description: ""
+        example: registry.hub.docker.com/v2/adevinta/vulcan-tls:322
+      options:
+        type: string
+        description: ""
+        example: "{}"
+      report:
+        type: string
+        description: ""
+        example: https://results.vulcan.com//v1/reports/dt=2021-02-24/scan=dd83da60-76bd-11eb-afc5-ceb90fec113b/dd83da60-76bd-11eb-afc5-ceb90fec113b.json
+      raw:
+        type: string
+        description: ""
+        example: https://results.vulcan.com/v1/logs/dt=2021-02-24/scan=dd83da60-76bd-11eb-afc5-ceb90fec113b/dd83da60-76bd-11eb-afc5-ceb90fec113b.log
+      tag:
+        type: string
+        description: ""
+        example: "tag:vulcan"
+      assettype:
+        type: string
+        description: ""
+        example: Hostname
   CreateScanResponse:
     type: object
     required:
@@ -282,10 +390,36 @@ definitions:
       scan_id:
         type: string
     example: '{"scan_id":"8eafa7b8-2650-446c-bfc5-970d101eace1"}'
-  GetScanByExternalID:
+  ListScans:
     type: object
     properties:
       scans:
         type: array
         items:
           $ref: "#/definitions/GetScan"
+  ListChecks:
+    type: object
+    properties:
+      checks:
+        type: array
+        items:
+          $ref: "#/definitions/GetCheck"
+  ScanStats:
+    type: object
+    properties:
+      checks:
+        type: array
+        items:
+          $ref: "#/definitions/CheckStats" 
+  CheckStats:
+    type: object
+    properties:
+      status:
+        type: string
+        description: ""
+        example: RUNNING
+      total:
+        type: integer
+        description: ""
+        example: 15
+
