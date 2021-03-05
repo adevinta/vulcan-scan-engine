@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/adevinta/vulcan-scan-engine/pkg/api"
 	"github.com/adevinta/vulcan-scan-engine/pkg/api/persistence/db"
@@ -89,7 +90,9 @@ func (db Persistence) UpdateScan(id uuid.UUID, scan api.Scan, updateStates []str
 
 // UpsertCheck adds or updates a check of a given scan.
 func (db Persistence) UpsertCheck(scanID, id uuid.UUID, check api.Check, updateStates []string) (int64, error) {
+	now := time.Now()
 	condition := ""
+
 	if len(updateStates) > 0 {
 		condition = `NOT(jsonb_exists(checks.data,'status')) OR (checks.data->>'status') IN (`
 		marks := []string{}
@@ -115,6 +118,13 @@ func (db Persistence) UpsertCheck(scanID, id uuid.UUID, check api.Check, updateS
 	for _, v := range updateStates {
 		args = append(args, interface{}(v))
 	}
+
+	check.UpdatedAt = &now
+	data, err := json.Marshal(check)
+	if err != nil {
+		return 0, err
+	}
+	check.Data = data
 
 	return db.store.UpsertChildDocumentWithData(scanID, id, check, check.Data, condition, args...)
 }

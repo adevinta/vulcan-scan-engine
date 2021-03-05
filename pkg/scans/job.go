@@ -51,10 +51,10 @@ func JobFromCheck(c api.Check) (Job, error) {
 	}
 	j.RequiredVars = *c.RequiredVars
 	j.ScanID = c.ScanID
-	if c.StartTime == nil {
-		return Job{}, errors.New("StartTime field is mandatory")
+	if c.CreatedAt == nil {
+		return Job{}, errors.New("createdAt field is mandatory")
 	}
-	j.ScanStartTime = *c.StartTime
+	j.ScanStartTime = *c.CreatedAt
 
 	j.Target = c.Target
 	if c.Timeout == nil {

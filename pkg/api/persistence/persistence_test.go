@@ -610,7 +610,7 @@ func TestPersistence_GetScanChecks(t *testing.T) {
 			}
 
 			diff := cmp.Diff(tt.want, got, cmpopts.IgnoreFields(api.Check{},
-				"Options", "ScanID", "WebHook", "Progress", "QueueName", "ChecktypeID", "Data",
+				"Options", "ScanID", "WebHook", "Progress", "QueueName", "ChecktypeID", "Data", "CreatedAt", "UpdatedAt",
 			))
 			if diff != "" {
 				t.Errorf("want checks != got checks. Diff: %s\n", diff)

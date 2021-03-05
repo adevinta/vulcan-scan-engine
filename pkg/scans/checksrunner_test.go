@@ -375,7 +375,7 @@ func TestChecksRunner_CreateScanChecks(t *testing.T) {
 					gotChecks = append(gotChecks, c)
 				}
 				wantChecks := scan4Checks
-				checksDiff := cmp.Diff(wantChecks, gotChecks, ChecksTrans, cmpopts.IgnoreFields(api.Check{}, "ID", "StartTime", "Data"))
+				checksDiff := cmp.Diff(wantChecks, gotChecks, ChecksTrans, cmpopts.IgnoreFields(api.Check{}, "ID", "CreatedAt", "UpdatedAt", "Data"))
 				if checksDiff != "" {
 					t.Fatalf("stored checks, want!=got, diff:%s", checksDiff)
 				}
@@ -385,7 +385,7 @@ func TestChecksRunner_CreateScanChecks(t *testing.T) {
 					gotChecks = append(gotChecks, c)
 				}
 				wantChecksUpdated := scan4Checks
-				checksUpdatedDiff := cmp.Diff(wantChecksUpdated, gotChecks, ChecksTrans, cmpopts.IgnoreFields(api.Check{}, "ID", "StartTime", "Data"))
+				checksUpdatedDiff := cmp.Diff(wantChecksUpdated, gotChecks, ChecksTrans, cmpopts.IgnoreFields(api.Check{}, "ID", "CreatedAt", "UpdatedAt", "Data"))
 				if checksUpdatedDiff != "" {
 					t.Fatalf("send updated checks to listener, want!=got, diff:%s", checksUpdatedDiff)
 				}
