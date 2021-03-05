@@ -36,8 +36,6 @@ const (
 	entityScan = "scan"
 
 	scanengineComponent = "scanengine"
-	otherOp             = "other"
-	unknownAction       = "unknown"
 )
 
 // MetricsMiddleware implements a metrics middleware over an endpoint.

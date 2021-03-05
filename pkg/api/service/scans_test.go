@@ -89,14 +89,6 @@ func (f fakeScansPersistence) UpdateScan(id uuid.UUID, scan api.Scan, updateStat
 	return f.ScanUpdater(id, scan, updateStates)
 }
 
-func (f fakeScansPersistence) AddEvent(scanID uuid.UUID, e api.Event) (int64, error) {
-	return 1, nil
-}
-
-func (f fakeScansPersistence) AddMalformedEvent(e api.MalformedEvent) (int64, error) {
-	return 1, nil
-}
-
 func (f fakeScansPersistence) GetScansByExternalID(ID string, offset, limit uint32) ([]api.Scan, error) {
 	return f.ScanBYExternalIDGetter(ID, offset, limit)
 }
