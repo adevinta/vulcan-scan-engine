@@ -107,6 +107,10 @@ paths:
         in: path
         required: true
         type: string
+      - name: status
+        in: query
+        required: false
+        type: string
   /scans/{scan_id}/stats:
     get:
       tags:
