@@ -24,10 +24,9 @@ type ScanCreator interface {
 
 // ScanGetter defines the service interface required by the endpoint GetScan
 type ScanGetter interface {
-	ListScans(ctx context.Context, offset, limit uint32) ([]api.Scan, error)
+	ListScans(ctx context.Context, extID string, offset, limit uint32) ([]api.Scan, error)
 	GetScan(ctx context.Context, scanID string) (api.Scan, error)
-	GetScanChecks(ctx context.Context, scanID string) ([]api.Check, error)
-	GetScansByExternalID(ctx context.Context, ID string, offset, limit uint32) ([]api.Scan, error)
+	GetScanChecks(ctx context.Context, scanID, status string) ([]api.Check, error)
 	GetScanStats(ctx context.Context, scanID string) ([]api.CheckStats, error)
 	GetCheck(ctx context.Context, checkID string) (api.Check, error)
 	AbortScan(ctx context.Context, scanID string) error
@@ -47,6 +46,13 @@ type ScanRequest struct {
 	Tag             string                       `json:"tag,omitempty"`
 	Offset          string                       `urlquery:"offset"`
 	Limit           string                       `urlquery:"limit"`
+}
+
+// ScanChecksRequest specifies the request for
+// the get scan checks endpoint.
+type ScanChecksRequest struct {
+	ID     string `json:"id" urlvar:"id"`
+	Status string `json:"status" urlquery:"status"`
 }
 
 // ScanResponse represents the response
@@ -154,12 +160,7 @@ func makeListScansEndpoint(s ScanGetter) endpoint.Endpoint {
 			return nil, errors.Assertion("Invalid offset or limit")
 		}
 
-		var scans []api.Scan
-		if req.ExternalID == "" {
-			scans, err = s.ListScans(ctx, offset, limit)
-		} else {
-			scans, err = s.GetScansByExternalID(ctx, req.ExternalID, offset, limit)
-		}
+		scans, err := s.ListScans(ctx, req.ExternalID, offset, limit)
 		if err != nil {
 			return nil, err
 		}
@@ -193,12 +194,12 @@ func makeGetScanEndpoint(s ScanGetter) endpoint.Endpoint {
 
 func makeGetScanChecksEndpoint(s ScanGetter) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
-		requestBody, ok := request.(*ScanRequest)
+		req, ok := request.(*ScanChecksRequest)
 		if !ok {
 			return nil, errors.Assertion("Type assertion failed")
 		}
 
-		checks, err := s.GetScanChecks(ctx, requestBody.ID)
+		checks, err := s.GetScanChecks(ctx, req.ID, req.Status)
 		if err != nil {
 			return nil, err
 		}

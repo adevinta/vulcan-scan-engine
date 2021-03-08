@@ -20,6 +20,7 @@ type ScansStore interface {
 	UpsertCheck(scanID, id uuid.UUID, check api.Check, updateStates []string) (int64, error)
 	GetScans(offset, limit uint32) ([]api.Scan, error)
 	GetScanChecks(scanID uuid.UUID) ([]api.Check, error)
+	GetScanChecksByStatus(scanID uuid.UUID, status string) ([]api.Check, error)
 	GetScanByID(id uuid.UUID) (api.Scan, error)
 	GetScanStats(scanID uuid.UUID) (map[string]int, error)
 	UpdateScan(id uuid.UUID, scan api.Scan, updateStates []string) (int64, error)
@@ -154,9 +155,29 @@ func (db Persistence) GetScanByID(id uuid.UUID) (api.Scan, error) {
 	return s, err
 }
 
-// GetScanChecks returns all the checks of a scan.
+// GetScanChecks returns all checks of a scan.
 func (db Persistence) GetScanChecks(scanID uuid.UUID) ([]api.Check, error) {
 	datas, err := db.store.GetChildDocsFromDocType(api.Check{}, scanID)
+	if err != nil {
+		return []api.Check{}, err
+	}
+	res := []api.Check{}
+	for _, v := range datas {
+		c := api.Check{}
+		err := json.Unmarshal(v, &c)
+		if err != nil {
+			return []api.Check{}, err
+		}
+		c.Data = v
+		res = append(res, c)
+	}
+	return res, nil
+}
+
+// GetScanChecksByStatus returns all checks of a scan that have the given status.
+func (db Persistence) GetScanChecksByStatus(scanID uuid.UUID, status string) ([]api.Check, error) {
+	cond := "checks.data->>'status' = ?"
+	datas, err := db.store.GetChildDocsFromDocTypeWithCondition(api.Check{}, scanID, cond, status)
 	if err != nil {
 		return []api.Check{}, err
 	}

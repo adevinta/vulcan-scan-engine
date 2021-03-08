@@ -76,7 +76,7 @@ func MakeHandlers(e *endpoint.Endpoints, logger kitlog.Logger) *Handlers {
 		CreateScan:    newServer(e.CreateScan, makeDecodeRequestFunc(endpoint.ScanRequest{}), "CreateScan"),
 		ListScans:     newServer(e.ListScans, makeDecodeRequestFunc(endpoint.ScanRequest{}), "ListScans"),
 		GetScan:       newServer(e.GetScan, makeDecodeRequestFunc(endpoint.ScanRequest{}), "GetScan"),
-		GetScanChecks: newServer(e.GetScanChecks, makeDecodeRequestFunc(endpoint.ScanRequest{}), "GetScanChecks"),
+		GetScanChecks: newServer(e.GetScanChecks, makeDecodeRequestFunc(endpoint.ScanChecksRequest{}), "GetScanChecks"),
 		GetScanStats:  newServer(e.GetScanStats, makeDecodeRequestFunc(endpoint.ScanRequest{}), "GetScanStats"),
 		GetCheck:      newServer(e.GetCheck, makeDecodeRequestFunc(endpoint.CheckRequest{}), "GetCheck"),
 		AbortScan:     newServer(e.AbortScan, makeDecodeRequestFunc(endpoint.ScanRequest{}), "AbortScan"),

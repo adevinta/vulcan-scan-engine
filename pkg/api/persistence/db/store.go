@@ -324,6 +324,30 @@ func (db DB) GetChildDocs(table string, parentID uuid.UUID) ([][]byte, error) {
 	return datas, err
 }
 
+// GetChildDocsWithCondition gets all the child documents for a given parent and condition.
+func (db DB) GetChildDocsWithCondition(table string, parentID uuid.UUID, cond string, params ...interface{}) ([][]byte, error) {
+	strExec := `SELECT data FROM %s WHERE parent_id = ? AND %s`
+	st := fmt.Sprintf(strExec, table, cond)
+	st = db.db.Rebind(st)
+	queryParams := []interface{}{parentID}
+	queryParams = append(queryParams, params...)
+	res, err := db.db.Query(st, queryParams...)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Close() // nolint
+	datas := [][]byte{}
+	for res.Next() {
+		data := []byte{}
+		err = res.Scan(&data)
+		if err != nil {
+			return [][]byte{}, err
+		}
+		datas = append(datas, data)
+	}
+	return datas, err
+}
+
 // GetDocByID gets a document given its id.
 func (db DB) GetDocByID(table string, id uuid.UUID) ([]byte, error) {
 	st := `SELECT data FROM %s where id = ?`
@@ -576,8 +600,7 @@ func (db DB) GetDocByIDFromDocType(doc interface{}, id uuid.UUID) error {
 	return json.Unmarshal(data, doc)
 }
 
-// GetChildDocsFromDocType returns a document given its id.
-// the doc param must always be a pointer to a struct.
+// GetChildDocsFromDocType returns all child documents for a given parent ID
 func (db DB) GetChildDocsFromDocType(doc interface{}, parentID uuid.UUID) ([][]byte, error) {
 	val := reflect.ValueOf(doc)
 	tableName := reflect.Indirect(val).Type().Name()
@@ -586,6 +609,17 @@ func (db DB) GetChildDocsFromDocType(doc interface{}, parentID uuid.UUID) ([][]b
 	tableName = strings.ToLower(tableName)
 	return db.GetChildDocs(tableName, parentID)
 
+}
+
+// GetChildDocsFromDocTypeWithCondition returns child documents for a given parent ID
+// complying with a specific condition.
+func (db DB) GetChildDocsFromDocTypeWithCondition(doc interface{}, parentID uuid.UUID, cond string, params ...interface{}) ([][]byte, error) {
+	val := reflect.ValueOf(doc)
+	tableName := reflect.Indirect(val).Type().Name()
+	// By convention the name of the type is the singular form of the table's name in lower case.
+	tableName = tableName + "s"
+	tableName = strings.ToLower(tableName)
+	return db.GetChildDocsWithCondition(tableName, parentID, cond, params...)
 }
 
 // GetChildDocsStatsFromDocType returns a document given its id.
