@@ -103,8 +103,15 @@ func New(logger log.Logger, db persistence.ScansStore, client ChecktypesInformer
 }
 
 // ListScans returns the list of scans.
-func (s ScansService) ListScans(ctx context.Context, offset, limit uint32) ([]api.Scan, error) {
-	return s.db.GetScans(offset, limit)
+func (s ScansService) ListScans(ctx context.Context, extID string, offset, limit uint32) ([]api.Scan, error) {
+	var err error
+	scans := []api.Scan{}
+	if extID == "" {
+		scans, err = s.db.GetScans(offset, limit)
+	} else {
+		scans, err = s.db.GetScansByExternalID(extID, offset, limit)
+	}
+	return scans, err
 }
 
 // GetScan returns the scan corresponding with a given id.
@@ -121,25 +128,18 @@ func (s ScansService) GetScan(ctx context.Context, scanID string) (api.Scan, err
 }
 
 // GetScanChecks returns the checks for the scan with the given id.
-func (s ScansService) GetScanChecks(ctx context.Context, scanID string) ([]api.Check, error) {
+func (s ScansService) GetScanChecks(ctx context.Context, scanID, status string) ([]api.Check, error) {
 	id, err := uuid.FromString(scanID)
 	if err != nil {
 		return []api.Check{}, errors.Assertion(fmt.Sprintf("not valid scan ID %s", scanID))
 	}
-	checks, err := s.db.GetScanChecks(id)
-	if err != nil {
-		return []api.Check{}, err
+	checks := []api.Check{}
+	if status == "" {
+		checks, err = s.db.GetScanChecks(id)
+	} else {
+		checks, err = s.db.GetScanChecksByStatus(id, status)
 	}
-	return checks, nil
-}
-
-// GetScansByExternalID returns the scans that have the same external ids.
-func (s ScansService) GetScansByExternalID(ctx context.Context, ID string, offset, limit uint32) ([]api.Scan, error) {
-	scans, err := s.db.GetScansByExternalID(ID, offset, limit)
-	if err != nil {
-		return nil, err
-	}
-	return scans, nil
+	return checks, err
 }
 
 // GetScanStats returns the check stats for the given scan ID.
