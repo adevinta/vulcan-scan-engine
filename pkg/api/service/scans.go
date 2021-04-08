@@ -374,7 +374,7 @@ func (s ScansService) ProcessScanCheckNotification(ctx context.Context, msg []by
 			_ = level.Debug(s.logger).Log("ScanStatusSet", scanID.String()+";"+util.Ptr2Str(scan.Status))
 		}
 
-		check := mergeChecks(checkMssg, dbCheck)
+		check := mergeChecks(dbCheck, checkMssg)
 
 		// If check message implies a status change from the
 		// one stored in DB, propagate it and push metrics.
