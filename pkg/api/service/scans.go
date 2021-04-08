@@ -597,13 +597,13 @@ func mergeChecks(old api.Check, new api.Check) api.Check {
 	if new.Status != "" {
 		c.Status = new.Status
 	}
-	if new.Progress != nil {
+	if util.Ptr2Float(new.Progress) != 0 {
 		c.Progress = new.Progress
 	}
-	if new.Report != nil {
+	if util.Ptr2Str(new.Report) != "" {
 		c.Report = new.Report
 	}
-	if new.Raw != nil {
+	if util.Ptr2Str(new.Raw) != "" {
 		c.Raw = new.Raw
 	}
 	return c
