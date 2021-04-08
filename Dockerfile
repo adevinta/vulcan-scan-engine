@@ -15,7 +15,7 @@ RUN cd cmd/vulcan-scan-engine/ && GOOS=linux GOARCH=amd64 go build . && cd -
 
 FROM alpine:3.10
 
-ENV FLYWAY_VERSION 6.1.4
+ARG FLYWAY_VERSION=7.7.2
 WORKDIR /flyway
 
 RUN apk add --no-cache --update openjdk8-jre bash gettext
