@@ -364,6 +364,7 @@ func TestChecksRunner_CreateScanChecks(t *testing.T) {
 				wantScan.ChecksCreated = intToPtr(3)
 				wantScan.LastTargetCheckGCreated = intToPtr(1)
 				wantScan.LastCheckCreated = intToPtr(-1)
+				wantScan.TargetGroups = &[]api.TargetsChecktypesGroup{}
 				gotScan := store.scans[scan4ID]
 				scansDiff := cmp.Diff(wantScan, gotScan)
 				if scansDiff != "" {
