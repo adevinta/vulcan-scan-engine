@@ -356,7 +356,9 @@ func (s ScansService) ProcessScanCheckNotification(ctx context.Context, msg []by
 
 	// Only update scan and checks data if there is an status change.
 	// Intermediate check messages data (e.g.: progress reporting) are not persisted.
-	if checkStates.IsHigher(checkMssg.Status, dbCheck.Status) {
+	// We have to take into account the particular check message sent by the agent for
+	// report and raw data which does not state an explicit status.
+	if checkMssg.Status == "" || checkStates.IsHigher(checkMssg.Status, dbCheck.Status) {
 		checkCount, err := s.db.UpsertCheck(scanID, checkID, checkMssg, checkStates.LessOrEqual(checkMssg.Status))
 		if err != nil {
 			return err
