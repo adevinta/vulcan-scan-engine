@@ -308,88 +308,95 @@ func (s ScansService) checktypesByAssettype(ctx context.Context) (ChecktypesByAs
 func (s ScansService) ProcessScanCheckNotification(ctx context.Context, msg []byte) error {
 	_ = level.Debug(s.logger).Log("ProcessingMessage", string(msg))
 
-	c := api.Check{}
-	err := json.Unmarshal(msg, &c)
+	// Parse check mssg
+	checkMssg := api.Check{}
+	err := json.Unmarshal(msg, &checkMssg)
 	if err != nil {
 		_ = level.Error(s.logger).Log(err)
 		return nil
 	}
-	err = validator.New().Struct(c)
+	err = validator.New().Struct(checkMssg)
 	if err != nil {
 		_ = level.Error(s.logger).Log("ErrorValidatingCheckUpdateEvent", err)
 		return nil
 	}
-	checkID, err := uuid.FromString(c.ID)
+	checkMssg.Data = msg
+	checkProgress := util.Ptr2Float(checkMssg.Progress)
+
+	// Retrieve DB check
+	checkID, err := uuid.FromString(checkMssg.ID)
 	if err != nil {
 		_ = level.Error(s.logger).Log("NotValidCheckID", err)
-		return nil
 	}
-	scanID, err := s.db.GetScanIDForCheck(checkID)
+	dbCheck, err := s.db.GetCheckByID(checkID)
 	if err != nil {
 		_ = level.Error(s.logger).Log("CheckForMsgDoesNotExist", err)
 		return nil
 	}
-	c.ScanID = scanID.String()
-	id, err := uuid.FromString(c.ID)
+	scanID, err := uuid.FromString(dbCheck.ScanID)
 	if err != nil {
 		_ = level.Error(s.logger).Log("NotValidScanID", err)
 		return nil
 	}
-	c.Data = msg
-	progress := util.Ptr2Float(c.Progress)
 
-	// Don't take into account inconsistent progress in a message with a
-	// terminal status.
-	if checkStates.IsTerminal(c.Status) && (progress != 1.0) {
-		_ = level.Error(s.logger).Log("FixingInvalidProgressInTerminalStatus", progress, "Status", c.Status)
-		progress = 1
-		c.Progress = &progress
+	// Don't take into account inconsistent progress in a message with a terminal status.
+	if checkStates.IsTerminal(checkMssg.Status) && (checkProgress != 1.0) {
+		_ = level.Error(s.logger).Log("FixingInvalidProgressInTerminalStatus", checkProgress, "Status", checkMssg.Status)
+		checkProgress = 1
+		checkMssg.Progress = &checkProgress
 	}
 
-	// The progress could still be incorrect if the check is not in a terminal
-	// status. In that case we want to discard the message because we can not
-	// deduce the progress from the status.
-	if progress > 1.0 || progress < 0.0 {
-		_ = level.Error(s.logger).Log("NotValidProgress", c.Progress)
+	// The progress could still be incorrect if the check is not in a terminal status.
+	// In that case we want to discard the message because we can not deduce the progress
+	// from the status.
+	if checkProgress > 1.0 || checkProgress < 0.0 {
+		_ = level.Error(s.logger).Log("NotValidProgress", checkMssg.Progress)
 		return nil
 	}
 
-	checkCount, err := s.db.UpsertCheck(scanID, id, c, checkStates.LessOrEqual(c.Status))
-	if err != nil {
-		return err
-	}
-
-	// If the upsert didn't affect any check we have to try to update the status.
-	if checkCount == 0 {
-		_ = level.Info(s.logger).Log("NoEffectProcessingCheckUpdate", string(msg))
-	}
-	scanCount, scan, err := s.updateScanStatus(scanID)
-	if err != nil {
-		return err
-	}
-
-	if scanCount > 0 {
-		_ = level.Info(s.logger).Log("ScanStatusUpdated", string(msg))
-		_ = level.Debug(s.logger).Log("ScanStatusSet", scanID.String()+";"+util.Ptr2Str(scan.Status))
-	}
-
-	// If check message implies a status change from the
-	// one stored in DB, propagate it and push metrics.
-	if c.Status != "" && checkCount > 0 {
-		err = s.notifyCheck(checkID, util.Ptr2Str(scan.ExternalID))
+	// Only update scan and checks data if there is an status change.
+	// Intermediate check messages data (e.g.: progress reporting) are not persisted.
+	// We have to take into account the particular check message sent by the agent for
+	// report and raw data which does not state an explicit status.
+	if checkMssg.Status == "" || checkStates.IsHigher(checkMssg.Status, dbCheck.Status) {
+		checkCount, err := s.db.UpsertCheck(scanID, checkID, checkMssg, checkStates.LessOrEqual(checkMssg.Status))
 		if err != nil {
 			return err
 		}
-	}
+		if checkCount == 0 {
+			_ = level.Info(s.logger).Log("NoEffectProcessingCheckUpdate", string(msg))
+		}
 
-	// If the current scans is finished and this check state update was the one
-	// that caused it to be in that state then we notify the scan is finished.
-	if scanCount > 0 && *scan.Status == ScanStatusFinished {
-		err = s.notifyScan(scanID)
+		scanCount, scan, err := s.updateScanStatus(scanID)
 		if err != nil {
 			return err
 		}
+		if scanCount > 0 {
+			_ = level.Info(s.logger).Log("ScanStatusUpdated", string(msg))
+			_ = level.Debug(s.logger).Log("ScanStatusSet", scanID.String()+";"+util.Ptr2Str(scan.Status))
+		}
+
+		check := mergeChecks(dbCheck, checkMssg)
+
+		// If check message implies a status change from the
+		// one stored in DB, propagate it and push metrics.
+		if checkMssg.Status != "" && checkCount > 0 {
+			err = s.notifyCheck(check, util.Ptr2Str(scan.ExternalID))
+			if err != nil {
+				return err
+			}
+		}
+
+		// If the current scans is finished and this check state update was the one
+		// that caused it to be in that state then we notify the scan is finished.
+		if scanCount > 0 && *scan.Status == ScanStatusFinished {
+			err = s.notifyScan(scanID)
+			if err != nil {
+				return err
+			}
+		}
 	}
+
 	return nil
 }
 
@@ -404,12 +411,7 @@ func (s ScansService) notifyScan(scanID uuid.UUID) error {
 	return s.scansNotifier.Push(scan.ToScanNotification(), nil)
 }
 
-func (s ScansService) notifyCheck(checkID uuid.UUID, programID string) error {
-	check, err := s.db.GetCheckByID(checkID)
-	if err != nil {
-		return err
-	}
-
+func (s ScansService) notifyCheck(check api.Check, programID string) error {
 	s.pushCheckMetrics(check, programID)
 
 	ctname := "unknown"
@@ -590,4 +592,21 @@ func statusFromChecks(scan api.Scan, checkStats map[string]int, n float32, l log
 	scan.Status = &status
 	scan.EndTime = endTime
 	return scan
+}
+
+func mergeChecks(old api.Check, new api.Check) api.Check {
+	c := old
+	if new.Status != "" {
+		c.Status = new.Status
+	}
+	if util.Ptr2Float(new.Progress) != 0 {
+		c.Progress = new.Progress
+	}
+	if util.Ptr2Str(new.Report) != "" {
+		c.Report = new.Report
+	}
+	if util.Ptr2Str(new.Raw) != "" {
+		c.Raw = new.Raw
+	}
+	return c
 }

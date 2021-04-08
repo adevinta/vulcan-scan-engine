@@ -43,14 +43,38 @@ func (c states) LessOrEqual(s string) []string {
 	}
 	return res
 }
+
+func (c states) High(s string) []string {
+	res := []string{}
+	for i := len(c) - 1; i >= 0; i-- {
+		x := sort.SearchStrings(c[i], s)
+		if x < len(c[i]) && c[i][x] == s {
+			break
+		}
+		res = append(res, c[i]...)
+	}
+	return res
+}
+
+func (c states) IsHigher(s, base string) bool {
+	for _, v := range c.High(base) {
+		if s == v {
+			return true
+		}
+	}
+	return false
+}
+
 func (c states) Terminal() []string {
 	return c[len(c)-1]
 }
+
 func (c states) IsTerminal(s string) bool {
 	t := c.Terminal()
 	x := sort.SearchStrings(t, s)
 	return (x < len(t) && t[x] == s)
 }
+
 func init() {
 	checkStates.Init()
 }
