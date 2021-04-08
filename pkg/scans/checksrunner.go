@@ -290,8 +290,7 @@ func (c *ChecksRunner) CreateScanChecks(id string) error {
 			ID:                      scan.ID,
 			LastCheckCreated:        &lastCheck,
 			LastTargetCheckGCreated: &last,
-			TargetGroups:            &[]api.TargetsChecktypesGroup{},  // Remove creation process data
-			ChecktypesInfo:          map[string]map[string]struct{}{}, // Remove creation process data
+			TargetGroups:            &[]api.TargetsChecktypesGroup{}, // Remove creation process data
 		}
 		_, err = c.store.UpdateScan(scan.ID, updateScan, []string{service.ScanStatusRunning})
 		if err != nil {
