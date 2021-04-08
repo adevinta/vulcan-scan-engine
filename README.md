@@ -64,6 +64,10 @@ Those are the variables you have to use:
 |PERSISTENCE_HOST||persistence.vulcan.com|
 |CHECKS_SQS_ARN|ARN for the checks creation queue|arn:aws:sqs:xxx:123456789012:yyy|
 |CHECKS_SQS_ENDPOINT|Endpoint for the checks creation queue (optional)|http://custom-aws-endpoint|
+|CHECKS_SQS_PROCESSORS|Number of workers processing check updates|8|
+|CHECKS_SQS_INTERVAL||10|
+|CHECKS_SQS_WAIT||20|
+|CHECKS_SQS_TIMEOUT||30|
 |SCANS_SNS_ARN|ARN for the scans notification topic|arn:aws:sns:xxx:123456789012:yyy|
 |SCANS_SNS_ENDPOINT|Endpoint for the scans notification topic (optional)|http://custom-aws-endpoint|
 |CHECKS_SNS_ARN|ARN for the checks status notification topic|arn:aws:sns:xxx:123456789012:yyy|
