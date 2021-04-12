@@ -222,7 +222,7 @@ func (s *SQSConsumer) readAndProcess(ctx context.Context) error {
 		err := s.process(ctx, *m)
 		if err != nil {
 			// Do not delete messages incorrectly processed.
-			_ = level.Error(s.logger).Log("ErrorProcessingSQSMessage", err.Error())
+			_ = level.Error(s.logger).Log("ErrorProcessingSQSMessage", err.Error(), "MessageID", *m.MessageId)
 			continue
 		}
 
