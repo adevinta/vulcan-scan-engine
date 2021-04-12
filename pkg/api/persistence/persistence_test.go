@@ -311,6 +311,84 @@ func TestPersistence_InsertCheckIfNotExists(t *testing.T) {
 	}
 }
 
+func TestPersistence_IncrFinishedChecks(t *testing.T) {
+	loadFixtures(t)
+	tests := []struct {
+		name     string
+		scanID   uuid.UUID
+		wantErr  error
+		wantScan api.Scan
+	}{
+		{
+			name:   "IncreaseBy1FinishedChecks",
+			scanID: UUIDFromString(fixtureScans["Scan1"].ID),
+			wantScan: api.Scan{
+				ID:       UUIDFromString(fixtureScans["Scan1"].ID),
+				Status:   &runningState,
+				Progress: testutil.FloatPointer(0.3),
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			db, err := db.NewDB(dialect, connStr)
+			defer db.Close() //nolint
+			if err != nil {
+				t.Fatal(err)
+			}
+			s := NewPersistence(db)
+			err = s.IncrFinishedChecks(tt.scanID)
+			if testutil.ErrToStr(err) != testutil.ErrToStr(tt.wantErr) {
+				t.Errorf("Store.UpdateScan() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			got := api.Scan{}
+			err = db.GetDocByIDFromDocType(&got, tt.scanID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			diff := cmp.Diff(tt.wantScan, got)
+			if diff != "" {
+				t.Errorf("want Scan != got Scan. Diff: %s\n", diff)
+			}
+		})
+	}
+}
+
+func TestPersistence_GetTerminatedChecks(t *testing.T) {
+	loadFixtures(t)
+	tests := []struct {
+		name    string
+		scanID  uuid.UUID
+		wantErr error
+		want    int64
+	}{
+		{
+			name:   "GetTerminatedChecks",
+			scanID: UUIDFromString(fixtureScans["Scan1"].ID),
+			want:   0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			db, err := db.NewDB(dialect, connStr)
+			defer db.Close() //nolint
+			if err != nil {
+				t.Fatal(err)
+			}
+			s := NewPersistence(db)
+			got, err := s.GetTerminatedChecks(tt.scanID)
+			if testutil.ErrToStr(err) != testutil.ErrToStr(tt.wantErr) {
+				t.Errorf("error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if tt.want != got {
+				t.Errorf("(want=%d)!=(got=%d)", tt.want, got)
+			}
+		})
+	}
+}
+
 func UUIDFromString(v string) uuid.UUID {
 	ret, _ := uuid.FromString(v)
 	return ret

@@ -167,18 +167,34 @@ func (db DB) DeleteChildDocs(table string, parentID uuid.UUID) error {
 	return err
 }
 
-// UpdateChildDoc updates a document that belongs to a parent document.
-func (db DB) UpdateChildDoc(table string, parentID, id uuid.UUID, path []byte, partialDoc []byte) (int64, error) {
+// IncrFieldDoc updates a document that belongs to a parent document.
+func (db DB) IncrFieldDoc(table string, id uuid.UUID, field string) (int64, error) {
+	strExec := `UPDATE %s SET data =  data || ('{"%s": ' || ((data->>'%s')::int + 1) || '}')::jsonb  WHERE id = ?`
+	st := fmt.Sprintf(strExec, table, field, field)
+	st = db.db.Rebind(st)
+	res, err := db.db.Exec(st, id)
+	if err != nil {
+		return 0, err
+	}
+	count, err := res.RowsAffected()
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
+// UpdateDoc updates a document with a given id, using the given expression
+func (db DB) UpdateDoc(table string, parentID, id uuid.UUID, path []byte, partialDoc []byte) (int64, error) {
 	strExec := `UPDATE %s SET data = jsonb_set(data, ?,?, true) WHERE id = ? AND parent_id = ?`
 	st := fmt.Sprintf(strExec, table)
 	st = db.db.Rebind(st)
 	res, err := db.db.Exec(st, path, partialDoc, id)
 	if err != nil {
-		return 0, nil
+		return 0, err
 	}
 	count, err := res.RowsAffected()
 	if err != nil {
-		return 0, nil
+		return 0, err
 	}
 	return count, nil
 }
@@ -212,6 +228,28 @@ func (db DB) GetChildDoc(table string, parentID, id uuid.UUID) ([]byte, error) {
 	}
 	err = res.Scan(&data)
 	return data, err
+}
+
+// CountDocsWithCondition returns the number of documents that meet the given
+// where condition.
+func (db DB) CountDocsWithCondition(table, condition string, params ...interface{}) (int64, error) {
+	strExec := `SELECT COUNT(*) FROM %s WHERE %s`
+	st := fmt.Sprintf(strExec, table, condition)
+	st = db.db.Rebind(st)
+	res, err := db.db.Query(st, params...)
+	if err != nil {
+		return 0, ErrWithQueryAndParams(err, st, params)
+	}
+	defer res.Close() // nolint
+	if !res.Next() {
+		return 0, errors.NotFound(nil)
+	}
+	var count int64
+	err = res.Scan(&count)
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
 }
 
 // GetParentIDDoc gets the parent id from a given ChildID
@@ -504,6 +542,20 @@ func (db DB) CreateDocumentWithID(id uuid.UUID, doc interface{}) error {
 	return db.InsertDocWithID(tableName, id, data)
 }
 
+// IncrDocumentField increases by 1 a field in the json data of the given document.
+// The document and the field must already exist
+func (db DB) IncrDocumentField(id uuid.UUID, doc interface{}, field string) error {
+	tableName := reflect.TypeOf(doc).Name()
+	if tableName == "" {
+		return ErrAnonymousType
+	}
+	// By convention the name of the type is the singular form of table's name.
+	tableName = tableName + "s"
+	tableName = strings.ToLower(tableName)
+	_, err := db.IncrFieldDoc(tableName, id, field)
+	return err
+}
+
 // CreateDocument creates a document in the underlaying store.
 // The doc parameter is only use the derive the name of the table to store the data.
 func (db DB) CreateDocument(doc interface{}, data []byte) (int64, error) {
@@ -567,6 +619,18 @@ func (db DB) UpsertChildDocumentWithData(parentID, id uuid.UUID, doc interface{}
 	tableName = tableName + "s"
 	tableName = strings.ToLower(tableName)
 	return db.UpsertChildDocWithCondition(tableName, parentID, id, data, condition, args...)
+}
+
+// CountDocumentsWithCondition retruns the number of documents that meet a given condition.
+func (db DB) CountDocumentsWithCondition(doc interface{}, condition string, args ...interface{}) (int64, error) {
+	tableName := reflect.TypeOf(doc).Name()
+	if tableName == "" {
+		return 0, ErrAnonymousType
+	}
+	// By convention the name of the type is the singular form of table's name.
+	tableName = tableName + "s"
+	tableName = strings.ToLower(tableName)
+	return db.CountDocsWithCondition(tableName, condition, args...)
 }
 
 // GetAllDocsFromDocType returns the list of docs for the given doc type.

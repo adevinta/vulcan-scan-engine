@@ -2,12 +2,12 @@
 Copyright 2021 Adevinta
 */
 
-package service
+package api
 
 import "sort"
 
 var (
-	checkStates = states{
+	CheckStates = States{
 		[]string{"CREATED"},
 		[]string{"QUEUED"},
 		[]string{"ASSIGNED"},
@@ -17,13 +17,13 @@ var (
 	}
 )
 
-// states holds all prosibles states of a finite state machine
-// in a way that is easy to determine the states less or equal than a
-// given state. This implementation supposes that there are only few states
-// so the cost of walking through all the states is close to constant.
-type states [][]string
+// States holds all prosibles States of a finite state machine
+// in a way that is easy to determine the States less or equal than a
+// given state. This implementation supposes that there are only few States
+// so the cost of walking through all the States is close to constant.
+type States [][]string
 
-func (c states) Init() {
+func (c States) Init() {
 	for _, s := range c {
 		sort.Strings(s)
 	}
@@ -32,7 +32,7 @@ func (c states) Init() {
 // LessOrEqual returns the states from state machine
 // that are preceding s, if s is not an existent state
 // in state machine, all states are returned.
-func (c states) LessOrEqual(s string) []string {
+func (c States) LessOrEqual(s string) []string {
 	res := []string{}
 	for i := 0; i < len(c); i++ {
 		res = append(res, c[i]...)
@@ -44,7 +44,7 @@ func (c states) LessOrEqual(s string) []string {
 	return res
 }
 
-func (c states) High(s string) []string {
+func (c States) High(s string) []string {
 	res := []string{}
 	for i := len(c) - 1; i >= 0; i-- {
 		x := sort.SearchStrings(c[i], s)
@@ -56,7 +56,7 @@ func (c states) High(s string) []string {
 	return res
 }
 
-func (c states) IsHigher(s, base string) bool {
+func (c States) IsHigher(s, base string) bool {
 	for _, v := range c.High(base) {
 		if s == v {
 			return true
@@ -65,16 +65,16 @@ func (c states) IsHigher(s, base string) bool {
 	return false
 }
 
-func (c states) Terminal() []string {
+func (c States) Terminal() []string {
 	return c[len(c)-1]
 }
 
-func (c states) IsTerminal(s string) bool {
+func (c States) IsTerminal(s string) bool {
 	t := c.Terminal()
 	x := sort.SearchStrings(t, s)
 	return (x < len(t) && t[x] == s)
 }
 
 func init() {
-	checkStates.Init()
+	CheckStates.Init()
 }

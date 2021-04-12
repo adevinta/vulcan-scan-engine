@@ -7,6 +7,7 @@ package persistence
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -87,6 +88,12 @@ func (db Persistence) UpdateScan(id uuid.UUID, scan api.Scan, updateStates []str
 	count, err := db.store.UpsertDocument(id, scan, condition, args...)
 	return count, err
 
+}
+
+// IncrFinishedChecks increases by 1 the number of checks that are in a
+// terminal status for a given scan.
+func (db Persistence) IncrFinishedChecks(scanID uuid.UUID) error {
+	return db.store.IncrDocumentField(scanID, api.Scan{}, "checks_finished")
 }
 
 // UpsertCheck adds or updates a check of a given scan.
@@ -273,6 +280,23 @@ func (db Persistence) GetCreatingScans() ([]string, error) {
 	s := api.Scan{}
 	condition := `(data->'checks_created' is not null AND data->'check_count' <> data->'checks_created' AND  data->>'status' = 'RUNNING')`
 	return db.store.GetDocIDsWithCondFromDocType(s, condition)
+}
+
+// GetTerminatedChecks return the number of checks of a given scan that are in a
+// terminal status.
+func (db Persistence) GetTerminatedChecks(scanID uuid.UUID) (int64, error) {
+	// Build a condition like:
+	// WHERE  parent_id=? AND data->>'status' IN (
+	//    'MALFORMED', 'ABORTED', 'KILLED', 'FAILED', 'FINISHED', 'TIMEOUT', 'INCONCLUSIVE'
+	// )
+	states := []string{}
+	for _, s := range api.CheckStates.Terminal() {
+		states = append(states, fmt.Sprintf("'%s'", s))
+	}
+	statesClause := strings.Join(states, ",")
+	condition := fmt.Sprintf("parent_id= ? AND data->>'status' IN (%s)", statesClause)
+	check := api.Check{}
+	return db.store.CountDocumentsWithCondition(check, condition, scanID)
 }
 
 func (db Persistence) TryLockScan(id string) (*db.Lock, error) {

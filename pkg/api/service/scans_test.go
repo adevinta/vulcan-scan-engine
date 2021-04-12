@@ -519,19 +519,19 @@ func Test_states_LessOrEqual(t *testing.T) {
 	}
 	tests := []struct {
 		name string
-		c    states
+		c    api.States
 		args args
 		want []string
 	}{
 		{
 			name: "GetAllStates",
-			c:    checkStates,
+			c:    api.CheckStates,
 			args: args{
 				s: "FINISHED",
 			},
 			want: func() []string {
 				res := []string{}
-				for _, v := range checkStates {
+				for _, v := range api.CheckStates {
 					res = append(res, v...)
 				}
 				return res

@@ -340,7 +340,7 @@ func (s ScansService) ProcessScanCheckNotification(ctx context.Context, msg []by
 	}
 
 	// Don't take into account inconsistent progress in a message with a terminal status.
-	if checkStates.IsTerminal(checkMssg.Status) && (checkProgress != 1.0) {
+	if api.CheckStates.IsTerminal(checkMssg.Status) && (checkProgress != 1.0) {
 		_ = level.Error(s.logger).Log("FixingInvalidProgressInTerminalStatus", checkProgress, "Status", checkMssg.Status)
 		checkProgress = 1
 		checkMssg.Progress = &checkProgress
@@ -358,8 +358,8 @@ func (s ScansService) ProcessScanCheckNotification(ctx context.Context, msg []by
 	// Intermediate check messages data (e.g.: progress reporting) are not persisted.
 	// We have to take into account the particular check message sent by the agent for
 	// report and raw data which does not state an explicit status.
-	if checkMssg.Status == "" || checkStates.IsHigher(checkMssg.Status, dbCheck.Status) {
-		checkCount, err := s.db.UpsertCheck(scanID, checkID, checkMssg, checkStates.LessOrEqual(checkMssg.Status))
+	if checkMssg.Status == "" || api.CheckStates.IsHigher(checkMssg.Status, dbCheck.Status) {
+		checkCount, err := s.db.UpsertCheck(scanID, checkID, checkMssg, api.CheckStates.LessOrEqual(checkMssg.Status))
 		if err != nil {
 			return err
 		}
@@ -565,7 +565,7 @@ func statusFromChecks(scan api.Scan, checkStats map[string]int, n float32, l log
 		if status == "" || count == 0 {
 			continue
 		}
-		if checkStates.IsTerminal(status) {
+		if api.CheckStates.IsTerminal(status) {
 			finished = finished + float32(count)
 			if status == "ABORTED" {
 				anyAborted = true
