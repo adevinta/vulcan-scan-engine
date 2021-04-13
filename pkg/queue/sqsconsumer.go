@@ -219,23 +219,19 @@ func (s *SQSConsumer) readAndProcess(ctx context.Context) error {
 			continue
 		}
 
-		processedOK := true
 		err := s.process(ctx, *m)
 		if err != nil {
-			processedOK = false
-			_ = level.Error(s.logger).Log("ErrorProcessingSqsMessage", err.Error())
+			// Do not delete messages incorrectly processed.
+			_ = level.Error(s.logger).Log("ErrorProcessingSQSMessage", err.Error(), "MessageID", *m.MessageId)
+			continue
 		}
 
-		// Delete the message regardless has correctly processed or not.
 		_, err = s.sqs.DeleteMessage(&sqs.DeleteMessageInput{
 			ReceiptHandle: m.ReceiptHandle,
 			QueueUrl:      s.receiveParams.QueueUrl,
 		})
 		if err != nil {
 			_ = level.Error(s.logger).Log("ErrorDeletingSQSMessage", err)
-			continue
-		}
-		if !processedOK {
 			continue
 		}
 
