@@ -100,6 +100,7 @@ type Check struct {
 	CreatedAt     *time.Time         `json:"created_at,omitempty"`
 	UpdatedAt     *time.Time         `json:"updated_at,omitempty"`
 	Timeout       *int               `json:"timeout,omitempty"`
+	CheckAdded    *bool              `json:"check_added,omitempty"`
 	Data          []byte             `json:"-"`
 }
 

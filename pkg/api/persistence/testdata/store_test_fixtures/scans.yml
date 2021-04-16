@@ -2,11 +2,11 @@
 
 # scans.yml
 - id : "c3b5af18-4e1d-11e8-9c2d-fa7ae01bbebc"
-  data: '{"id": "c3b5af18-4e1d-11e8-9c2d-fa7ae01bbebc", "check_count": 2, "checks_created": 1,  "status": "RUNNING", "progress": 0.5}'
+  data: '{"id": "c3b5af18-4e1d-11e8-9c2d-fa7ae01bbebc", "checks_finished": 1, "check_count": 2, "checks_created": 1,  "status": "RUNNING", "progress": 0.5}'
   created_at: "2019-04-08 09:10:00.59883+00"
 
 - id: "a3b5af18-4e1d-11e8-9c2d-fa7ae01bbebc"
-  data: '{"id": "a3b5af18-4e1d-11e8-9c2d-fa7ae01bbebc", "status": "RUNNING", "progress": 0}'
+  data: '{"id": "a3b5af18-4e1d-11e8-9c2d-fa7ae01bbebc", "checks_finished": 1, "status": "RUNNING", "progress": 0}'
   created_at: "2019-04-07 10:00:00.59883+00"
 
 - id: "a3b5af18-4e1d-11e8-9c2d-fa7ae01bbeba"

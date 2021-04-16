@@ -69,6 +69,8 @@ type fakeScansPersistence struct {
 	ScanChecksRemover        func(scanID uuid.UUID) error
 	ScanIDForCheckGetter     func(ID uuid.UUID) (uuid.UUID, error)
 	CheckGetter              func(id uuid.UUID) (api.Check, error)
+	FinishedCheckAdder       func(ID uuid.UUID) (int64, error)
+	ScanStatusGetter         func(ID uuid.UUID) (api.Scan, error)
 }
 
 func (f fakeScansPersistence) CreateScan(id uuid.UUID, scan api.Scan) (int64, error) {
@@ -111,6 +113,14 @@ func (f fakeScansPersistence) GetScanIDForCheck(ID uuid.UUID) (uuid.UUID, error)
 
 func (f fakeScansPersistence) GetCheckByID(id uuid.UUID) (api.Check, error) {
 	return f.CheckGetter(id)
+}
+
+func (f fakeScansPersistence) AddCheckAsFinished(checkID uuid.UUID) (int64, error) {
+	return f.FinishedCheckAdder(checkID)
+}
+
+func (f fakeScansPersistence) GetScanStatus(ID uuid.UUID) (api.Scan, error) {
+	return f.ScanStatusGetter(ID)
 }
 
 type inMemoryAssettypeInformer struct {
@@ -367,6 +377,7 @@ func TestScansService_CreateScan(t *testing.T) {
 				Status:         &statusRUNNING,
 				CheckCount:     intToPtr(1),
 				ChecksCreated:  intToPtr(0),
+				ChecksFinished: intToPtr(0),
 				ChecktypesInfo: map[string]map[string]struct{}{"DomainName": {"vulcan-spf": {}}, "Hostname": {"vulcan-nessus": {}}, "IP": {}},
 			},
 		},
@@ -561,85 +572,6 @@ func intToPtr(in int) *int {
 
 func floatToPtr(in float32) *float32 {
 	return &in
-}
-
-func Test_statusFromChecks(t *testing.T) {
-	type args struct {
-		scan       api.Scan
-		checkStats map[string]int
-		n          float32
-	}
-	tests := []struct {
-		name string
-		args args
-		want api.Scan
-	}{
-		{
-			name: "RunningWhenNotAllChecksFinished",
-			args: args{
-				scan: api.Scan{
-					ID: uuid.FromStringOrNil("b3b5af18-4e1d-11e8-9c2d-fa7ae01bbebd"),
-				},
-				checkStats: map[string]int{
-					"FINISHED": 5,
-					"RUNNING":  1,
-				},
-				n: 10,
-			},
-			want: api.Scan{
-				ID:       uuid.FromStringOrNil("b3b5af18-4e1d-11e8-9c2d-fa7ae01bbebd"),
-				Status:   strToPtr(statusRUNNING),
-				Progress: floatToPtr(0.5),
-			},
-		},
-		{
-			name: "FinishedWhenAllChecksAreInFinalStatus",
-			args: args{
-				scan: api.Scan{
-					ID: uuid.FromStringOrNil("b3b5af18-4e1d-11e8-9c2d-fa7ae01bbebd"),
-				},
-				checkStats: map[string]int{
-					"FINISHED": 5,
-					"FAILED":   5,
-				},
-				n: 10,
-			},
-			want: api.Scan{
-				ID:       uuid.FromStringOrNil("b3b5af18-4e1d-11e8-9c2d-fa7ae01bbebd"),
-				Status:   strToPtr(ScanStatusFinished),
-				Progress: floatToPtr(1),
-			},
-		},
-		{
-			name: "FinishedWhenAllChecksAreInFinalStatus",
-			args: args{
-				scan: api.Scan{
-					ID: uuid.FromStringOrNil("b3b5af18-4e1d-11e8-9c2d-fa7ae01bbebd"),
-				},
-				checkStats: map[string]int{
-					"FINISHED": 5,
-					"FAILED":   4,
-					"ABORTED":  1,
-				},
-				n: 10,
-			},
-			want: api.Scan{
-				ID:       uuid.FromStringOrNil("b3b5af18-4e1d-11e8-9c2d-fa7ae01bbebd"),
-				Status:   strToPtr(ScanStatusAborted),
-				Progress: floatToPtr(1),
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-
-			got := statusFromChecks(tt.args.scan, tt.args.checkStats, tt.args.n, log.NewNopLogger())
-			diff := cmp.Diff(tt.want, got, cmpopts.IgnoreFields(api.Scan{}, "EndTime"))
-			if diff != "" {
-				t.Errorf("want!=got, diff: %s", diff)
-			}
-		})
-	}
 }
 
 func strToPtr(input string) *string {

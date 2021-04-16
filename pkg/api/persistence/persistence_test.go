@@ -5,6 +5,7 @@ Copyright 2021 Adevinta
 package persistence
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"reflect"
@@ -13,6 +14,7 @@ import (
 	"github.com/adevinta/vulcan-scan-engine/pkg/api"
 	"github.com/adevinta/vulcan-scan-engine/pkg/api/persistence/db"
 	"github.com/adevinta/vulcan-scan-engine/pkg/testutil"
+	"github.com/adevinta/vulcan-scan-engine/pkg/util"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
@@ -311,21 +313,71 @@ func TestPersistence_InsertCheckIfNotExists(t *testing.T) {
 	}
 }
 
-func TestPersistence_IncrFinishedChecks(t *testing.T) {
+func TestPersistence_AddCheckAsFinished(t *testing.T) {
 	loadFixtures(t)
 	tests := []struct {
-		name     string
-		scanID   uuid.UUID
-		wantErr  error
-		wantScan api.Scan
+		name      string
+		checkID   uuid.UUID
+		wantErr   error
+		wantN     int64
+		wantScan  api.Scan
+		wantCheck *api.Check
 	}{
 		{
-			name:   "IncreaseBy1FinishedChecks",
-			scanID: UUIDFromString(fixtureScans["Scan1"].ID),
+			name:    "AddCheckAsFinished",
+			checkID: UUIDFromString(fixtureScans["Scan1"].Checks["Check1"]),
+			wantN:   1,
 			wantScan: api.Scan{
-				ID:       UUIDFromString(fixtureScans["Scan1"].ID),
+				ID:             UUIDFromString(fixtureScans["Scan1"].ID),
+				Status:         &runningState,
+				Progress:       testutil.FloatPointer(0.5),
+				CheckCount:     testutil.IntPointer(2),
+				ChecksCreated:  testutil.IntPointer(1),
+				ChecksFinished: testutil.IntPointer(2),
+			},
+			wantCheck: &api.Check{
+				ID:          fixtureScans["Scan1"].Checks["Check1"],
+				ScanID:      fixtureScans["Scan1"].ID,
+				Status:      "CREATED",
+				Target:      "localhost",
+				Options:     util.Str2Ptr("{\"sleep_time\":6}"),
+				Progress:    testutil.FloatPointer(0.0),
+				QueueName:   util.Str2Ptr("aa"),
+				ChecktypeID: util.Str2Ptr("537473c5-f309-488f-a100-f524d4a739c9"),
+				CheckAdded:  util.Bool2Ptr(true),
+			},
+		},
+		{
+			name:    "DoNotAddIfAlreadyAdded",
+			checkID: UUIDFromString(fixtureScans["Scan2"].Checks["Check3"]),
+			wantN:   0,
+			wantScan: api.Scan{
+				ID:             UUIDFromString(fixtureScans["Scan2"].ID),
+				Status:         &runningState,
+				Progress:       testutil.FloatPointer(0),
+				ChecksFinished: testutil.IntPointer(1),
+			},
+			wantCheck: &api.Check{
+				Status:     "FINISHED",
+				CheckAdded: util.Bool2Ptr(true),
+				Target:     "localhost",
+				ScanID:     fixtureScans["Scan2"].ID,
+			},
+		},
+		{
+			name:    "ErrChecksFinishedNotInitialized",
+			checkID: UUIDFromString(fixtureScans["Scan5"].Checks["Check4"]),
+			wantN:   0,
+			wantErr: ErrChecksFinishedNotInitialized,
+			wantCheck: &api.Check{
+				Status: "CREATED",
+				ScanID: fixtureScans["Scan5"].ID,
+				Target: "localhost",
+			},
+			wantScan: api.Scan{
+				ID:       UUIDFromString(fixtureScans["Scan5"].ID),
 				Status:   &runningState,
-				Progress: testutil.FloatPointer(0.3),
+				Progress: testutil.FloatPointer(0.1),
 			},
 		},
 	}
@@ -338,52 +390,32 @@ func TestPersistence_IncrFinishedChecks(t *testing.T) {
 				t.Fatal(err)
 			}
 			s := NewPersistence(db)
-			err = s.IncrFinishedChecks(tt.scanID)
-			if testutil.ErrToStr(err) != testutil.ErrToStr(tt.wantErr) {
+			gotN, err := s.AddCheckAsFinished(tt.checkID)
+			if !errors.Is(err, tt.wantErr) {
 				t.Errorf("Store.UpdateScan() error = %v, wantErr %v", err, tt.wantErr)
 			}
-			got := api.Scan{}
-			err = db.GetDocByIDFromDocType(&got, tt.scanID)
+			if gotN != tt.wantN {
+				t.Errorf("Store.UpdateScan() n = %v, wantN %v", gotN, tt.wantN)
+			}
+
+			gotCheck := api.Check{}
+			err = db.GetDocByIDFromDocType(&gotCheck, tt.checkID)
 			if err != nil {
 				t.Fatal(err)
 			}
-			diff := cmp.Diff(tt.wantScan, got)
+			diff := cmp.Diff(&gotCheck, tt.wantCheck, cmpopts.IgnoreFields(api.Check{}, "CreatedAt", "UpdatedAt"))
 			if diff != "" {
-				t.Errorf("want Scan != got Scan. Diff: %s\n", diff)
+				t.Errorf("got Check != want Check. Diff: %s\n", diff)
 			}
-		})
-	}
-}
 
-func TestPersistence_GetTerminatedChecks(t *testing.T) {
-	loadFixtures(t)
-	tests := []struct {
-		name    string
-		scanID  uuid.UUID
-		wantErr error
-		want    int64
-	}{
-		{
-			name:   "GetTerminatedChecks",
-			scanID: UUIDFromString(fixtureScans["Scan1"].ID),
-			want:   0,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			db, err := db.NewDB(dialect, connStr)
-			defer db.Close() //nolint
+			got := api.Scan{}
+			err = db.GetDocByIDFromDocType(&got, UUIDFromString(gotCheck.ScanID))
 			if err != nil {
 				t.Fatal(err)
 			}
-			s := NewPersistence(db)
-			got, err := s.GetTerminatedChecks(tt.scanID)
-			if testutil.ErrToStr(err) != testutil.ErrToStr(tt.wantErr) {
-				t.Errorf("error = %v, wantErr %v", err, tt.wantErr)
-			}
-			if tt.want != got {
-				t.Errorf("(want=%d)!=(got=%d)", tt.want, got)
+			diff = cmp.Diff(got, tt.wantScan)
+			if diff != "" {
+				t.Errorf("got Scan != want Scan. Diff: %s\n", diff)
 			}
 		})
 	}
@@ -408,14 +440,16 @@ func TestPersistence_GetScans(t *testing.T) {
 			name: "ReturnsScansHappyPath",
 			want: []api.Scan{
 				{
-					ID:       UUIDFromString("c3b5af18-4e1d-11e8-9c2d-fa7ae01bbebc"),
-					Status:   &runningState,
-					Progress: testutil.FloatPointer(0.5),
+					ID:             UUIDFromString("c3b5af18-4e1d-11e8-9c2d-fa7ae01bbebc"),
+					Status:         &runningState,
+					ChecksFinished: util.Int2Ptr(1),
+					Progress:       testutil.FloatPointer(0.5),
 				},
 				{
-					ID:       UUIDFromString("a3b5af18-4e1d-11e8-9c2d-fa7ae01bbebc"),
-					Status:   &runningState,
-					Progress: testutil.FloatPointer(0),
+					ID:             UUIDFromString("a3b5af18-4e1d-11e8-9c2d-fa7ae01bbebc"),
+					Status:         &runningState,
+					ChecksFinished: util.Int2Ptr(1),
+					Progress:       testutil.FloatPointer(0),
 				},
 				{
 					ID:       UUIDFromString("a3b5af18-4e1d-11e8-9c2d-fa7ae01bbeba"),
@@ -457,14 +491,16 @@ func TestPersistence_GetScans(t *testing.T) {
 			Limit: 2,
 			want: []api.Scan{
 				{
-					ID:       UUIDFromString("c3b5af18-4e1d-11e8-9c2d-fa7ae01bbebc"),
-					Status:   &runningState,
-					Progress: testutil.FloatPointer(0.5),
+					ID:             UUIDFromString("c3b5af18-4e1d-11e8-9c2d-fa7ae01bbebc"),
+					ChecksFinished: util.Int2Ptr(1),
+					Status:         &runningState,
+					Progress:       testutil.FloatPointer(0.5),
 				},
 				{
-					ID:       UUIDFromString("a3b5af18-4e1d-11e8-9c2d-fa7ae01bbebc"),
-					Status:   &runningState,
-					Progress: testutil.FloatPointer(0),
+					ID:             UUIDFromString("a3b5af18-4e1d-11e8-9c2d-fa7ae01bbebc"),
+					ChecksFinished: util.Int2Ptr(1),
+					Status:         &runningState,
+					Progress:       testutil.FloatPointer(0),
 				},
 			},
 		},
@@ -692,6 +728,47 @@ func TestPersistence_GetScanChecks(t *testing.T) {
 			))
 			if diff != "" {
 				t.Errorf("want checks != got checks. Diff: %s\n", diff)
+			}
+		})
+	}
+}
+
+func TestPersistence_GetScanStatus(t *testing.T) {
+	loadFixtures(t)
+	tests := []struct {
+		name    string
+		scanID  uuid.UUID
+		want    api.Scan
+		wantErr bool
+	}{
+		{
+			name:   "ReturnsStatsHappyPath",
+			scanID: UUIDFromString(fixtureScans["Scan1"].ID),
+			want: api.Scan{
+				ID:             UUIDFromString(fixtureScans["Scan1"].ID),
+				Status:         util.Str2Ptr("RUNNING"),
+				CheckCount:     util.Int2Ptr(1),
+				ChecksFinished: util.Int2Ptr(2),
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			db, err := db.NewDB(dialect, connStr)
+			defer db.Close() //nolint
+			if err != nil {
+				t.Fatal(err)
+			}
+			s := NewPersistence(db)
+			got, err := s.GetScanStatus(tt.scanID)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Persistence.GetScanStats() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			diff := cmp.Diff(tt.want, got)
+			if diff != "" {
+				t.Errorf("want stats != got stats. Diff: %s\n", diff)
 			}
 		})
 	}

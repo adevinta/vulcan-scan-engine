@@ -171,6 +171,14 @@ func Ptr2Str(p *string) string {
 	return *p
 }
 
+func Str2Ptr(p string) *string {
+	return &p
+}
+
+func Int2Ptr(i int) *int {
+	return &i
+}
+
 // Ptr2Float returns the value passed in if it isn't nil.
 // Returns 0 otherwise.
 func Ptr2Float(val *float32) float32 {
@@ -192,4 +200,8 @@ func Ptr2Int(i *int) int {
 		return 0
 	}
 	return *i
+}
+
+func Bool2Ptr(b bool) *bool {
+	return &b
 }

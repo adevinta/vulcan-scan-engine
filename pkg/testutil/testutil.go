@@ -126,3 +126,9 @@ func StringPointer(s string) *string {
 func IntPointer(i int) *int {
 	return &i
 }
+
+// IntPointer returns a pointer to a int parameter passed in.
+// It's just an utility option for initializing inline struct fields.
+func Int64Pointer(i int64) *int64 {
+	return &i
+}

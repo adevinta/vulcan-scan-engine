@@ -30,7 +30,7 @@ func (c States) Init() {
 }
 
 // LessOrEqual returns the states from state machine
-// that are preceding s, if s is not an existent state
+// that are preceding s. if s is not an existent state
 // in state machine, all states are returned.
 func (c States) LessOrEqual(s string) []string {
 	res := []string{}
@@ -58,6 +58,15 @@ func (c States) High(s string) []string {
 
 func (c States) IsHigher(s, base string) bool {
 	for _, v := range c.High(base) {
+		if s == v {
+			return true
+		}
+	}
+	return false
+}
+
+func (c States) IsLessOrEqual(s, base string) bool {
+	for _, v := range c.LessOrEqual(base) {
 		if s == v {
 			return true
 		}
