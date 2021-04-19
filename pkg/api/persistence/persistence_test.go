@@ -747,8 +747,8 @@ func TestPersistence_GetScanStatus(t *testing.T) {
 			want: api.Scan{
 				ID:             UUIDFromString(fixtureScans["Scan1"].ID),
 				Status:         util.Str2Ptr("RUNNING"),
-				CheckCount:     util.Int2Ptr(1),
-				ChecksFinished: util.Int2Ptr(2),
+				CheckCount:     util.Int2Ptr(2),
+				ChecksFinished: util.Int2Ptr(1),
 			},
 		},
 	}

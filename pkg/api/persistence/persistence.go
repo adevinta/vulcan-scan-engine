@@ -259,7 +259,7 @@ func (db Persistence) GetScanStatus(ID uuid.UUID) (api.Scan, error) {
 		count, finished int
 		status          string
 	)
-	rest := []interface{}{&status, &count, &finished}
+	rest := []interface{}{&status, &finished, &count}
 	err := db.store.QueryRaw(query, rest, ID)
 	if err != nil {
 		return api.Scan{}, err
