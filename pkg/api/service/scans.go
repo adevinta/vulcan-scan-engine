@@ -327,6 +327,7 @@ func (s ScansService) ProcessScanCheckNotification(ctx context.Context, msg []by
 	checkID, err := uuid.FromString(checkMssg.ID)
 	if err != nil {
 		_ = level.Error(s.logger).Log("NotValidCheckID", err)
+		return nil
 	}
 
 	// If the progress is incorrect and the status of the check is terminal we
@@ -459,6 +460,7 @@ func (s ScansService) updateScanStatus(id uuid.UUID) (int64, string, error) {
 	finished := *scan.ChecksFinished
 	progress := float32(finished) / float32(count)
 	update := api.Scan{}
+	update.ID = id
 	update.Progress = &progress
 	if (*scan.Status == ScanStatusRunning) && (count == finished) {
 		update.Status = util.Str2Ptr(ScanStatusFinished)
