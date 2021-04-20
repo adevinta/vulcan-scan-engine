@@ -358,6 +358,12 @@ func (s ScansService) ProcessScanCheckNotification(ctx context.Context, msg []by
 	if err != nil {
 		return err
 	}
+	// If the message does not have any status specified is because it is only
+	// for comunicating other info like the url of the logs, so we don't need to
+	// take it into account for sending metrics or publising a status change.
+	if checkMssg.Status == "" {
+		return nil
+	}
 	// As a check message does not contain all the information
 	// of a check we must merge with the the info of the check in the DB.
 	check := mergeChecks(dbCheck, checkMssg)
