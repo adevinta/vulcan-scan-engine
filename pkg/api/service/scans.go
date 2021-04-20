@@ -364,11 +364,11 @@ func (s ScansService) ProcessScanCheckNotification(ctx context.Context, msg []by
 	if err != nil {
 		return err
 	}
-	programID := ""
-	if check.Tag != nil {
-		programID = *check.Tag
+	s.pushCheckMetrics(check)
+	err = s.notifyCheck(check)
+	if err != nil {
+		return err
 	}
-	s.notifyCheck(check, programID)
 
 	// If the status of the check is not terminal it will not affect the status
 	// of the scan, so we are done.
@@ -393,11 +393,8 @@ func (s ScansService) ProcessScanCheckNotification(ctx context.Context, msg []by
 	}
 	if status == ScanStatusFinished {
 		err = s.notifyScan(scanID)
-		if err != nil {
-			return err
-		}
 	}
-	return nil
+	return err
 }
 
 func (s ScansService) notifyScan(scanID uuid.UUID) error {
@@ -411,8 +408,7 @@ func (s ScansService) notifyScan(scanID uuid.UUID) error {
 	return s.scansNotifier.Push(scan.ToScanNotification(), nil)
 }
 
-func (s ScansService) notifyCheck(check api.Check, programID string) error {
-	s.pushCheckMetrics(check, programID)
+func (s ScansService) notifyCheck(check api.Check) error {
 	ctname := "unknown"
 	if check.ChecktypeName != nil {
 		ctname = *check.ChecktypeName
@@ -456,17 +452,21 @@ func (s ScansService) updateScanStatus(id uuid.UUID) (int64, string, error) {
 		err := fmt.Errorf("scan with id %s does not have mandatory field ChecksFinished", id.String())
 		return 0, "", err
 	}
+	status := *scan.Status
 	count := *scan.CheckCount
 	finished := *scan.ChecksFinished
 	progress := float32(finished) / float32(count)
 	update := api.Scan{}
 	update.ID = id
 	update.Progress = &progress
-	if (*scan.Status == ScanStatusRunning) && (count == finished) {
-		update.Status = util.Str2Ptr(ScanStatusFinished)
+	if (status == ScanStatusRunning) && (count == finished) {
+		status = ScanStatusFinished
+		update.Status = &status
+		now := time.Now()
+		update.EndTime = &now
 	}
 	n, err := s.db.UpdateScan(id, update, []string{ScanStatusRunning})
-	// Push scan progress metrics
+	// Push scan progress metrics.
 	s.metricsClient.Push(metrics.Metric{
 		Name:  scanCompletionMetric,
 		Typ:   metrics.Histogram,
@@ -474,7 +474,7 @@ func (s ScansService) updateScanStatus(id uuid.UUID) (int64, string, error) {
 		Tags:  []string{componentTag, buildScanTag(util.Ptr2Str(scan.Tag), util.Ptr2Str(scan.ExternalID))},
 	})
 
-	return n, *scan.Status, err
+	return n, status, err
 }
 
 // pushScanMetrics pushes metrics related to the scan status and its checks if applicable.
@@ -501,8 +501,14 @@ func (s ScansService) pushScanMetrics(scanStatus, teamTag, programID string, sta
 }
 
 // pushCheckMetrics pushes metrics related to the check status.
-func (s ScansService) pushCheckMetrics(check api.Check, programID string) {
-	scanTag := buildScanTag(util.Ptr2Str(check.Tag), programID)
+func (s ScansService) pushCheckMetrics(check api.Check) {
+	var program, team string
+	if check.Metadata != nil {
+		metadata := *check.Metadata
+		program = metadata["program"]
+		team = metadata["team"]
+	}
+	scanTag := buildScanTag(team, program)
 	checkStatusTag := fmt.Sprint("checkstatus:", check.Status)
 	checktypeTag := fmt.Sprint("checktype:", util.Ptr2Str(check.ChecktypeName))
 
