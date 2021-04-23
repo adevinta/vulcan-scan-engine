@@ -38,10 +38,6 @@ const (
 	// ScanStatusFinished status when a Scan has all the checks in a terminal status.
 	ScanStatusFinished = "FINISHED"
 
-	// ScanStatusAborted status when a Scan has all the checks in a terminal status and
-	// at least one is in an ABORTED status.
-	ScanStatusAborted = "ABORTED"
-
 	// Scan metrics.
 	componentTag         = "component:scanengine"
 	scanCountMetric      = "vulcan.scan.count"
@@ -49,6 +45,10 @@ const (
 	checkCountMetric     = "vulcan.scan.check.count"
 	metricsScanCreated   = "created"
 	metricsScanFinished  = "finished"
+
+	// LogFields
+	notValidProgressField = "InvalidProgress"
+	fixingProgressField   = "FixingInvalidProgress"
 )
 
 // ChecktypesInformer represents an informer for the mapping
@@ -184,8 +184,7 @@ func (s ScansService) AbortScan(ctx context.Context, scanID string) error {
 		return err
 	}
 
-	if scan.Status != nil && (*scan.Status == ScanStatusAborted ||
-		*scan.Status == ScanStatusFinished) {
+	if scan.Status != nil && (*scan.Status == ScanStatusFinished) {
 		errMssg := fmt.Sprintf("scan is in terminal status %s", *scan.Status)
 		return &errors.Error{
 			Kind:           errs.New("conflict"),
@@ -228,12 +227,14 @@ func (s ScansService) CreateScan(ctx context.Context, scan *api.Scan) (uuid.UUID
 		return uuid.Nil, err
 	}
 	scan.CheckCount = &stats.TotalNumberOfChecks
-	ccreated := 0
-	scan.ChecksCreated = &ccreated
+	zero := 0
+	scan.ChecksCreated = &zero
+	scan.ChecksFinished = &zero
 	_, err = s.db.CreateScan(id, *scan)
 	if err != nil {
 		return uuid.Nil, err
 	}
+
 	// Push metrics.
 	s.pushScanMetrics(metricsScanCreated, util.Ptr2Str(scan.Tag), util.Ptr2Str(scan.ExternalID), stats)
 	_ = level.Warn(s.logger).Log("ScanCreated", id)
@@ -308,7 +309,7 @@ func (s ScansService) checktypesByAssettype(ctx context.Context) (ChecktypesByAs
 func (s ScansService) ProcessScanCheckNotification(ctx context.Context, msg []byte) error {
 	_ = level.Debug(s.logger).Log("ProcessingMessage", string(msg))
 
-	// Parse check mssg
+	// Parse check message.
 	checkMssg := api.Check{}
 	err := json.Unmarshal(msg, &checkMssg)
 	if err != nil {
@@ -323,11 +324,25 @@ func (s ScansService) ProcessScanCheckNotification(ctx context.Context, msg []by
 	checkMssg.Data = msg
 	checkProgress := util.Ptr2Float(checkMssg.Progress)
 
-	// Retrieve DB check
 	checkID, err := uuid.FromString(checkMssg.ID)
 	if err != nil {
 		_ = level.Error(s.logger).Log("NotValidCheckID", err)
+		return nil
 	}
+
+	// If the progress is incorrect and the status of the check is terminal we
+	// rapair it. If it's incorrect but the status is not terminal we just
+	// ignore the message.
+	if checkProgress > 1.0 || checkProgress < 0.0 {
+		if !api.CheckStates.IsTerminal(checkMssg.Status) {
+			_ = level.Error(s.logger).Log(notValidProgressField, checkMssg.Progress, "Status", checkMssg.Status, "CheckID", checkMssg.ID)
+			return nil
+		}
+		_ = level.Error(s.logger).Log(fixingProgressField, checkProgress, "Status", checkMssg.Status, "CheckID", checkMssg.ID)
+		checkProgress = 1
+		checkMssg.Progress = &checkProgress
+	}
+
 	dbCheck, err := s.db.GetCheckByID(checkID)
 	if err != nil {
 		_ = level.Error(s.logger).Log("CheckForMsgDoesNotExist", err)
@@ -339,65 +354,53 @@ func (s ScansService) ProcessScanCheckNotification(ctx context.Context, msg []by
 		return nil
 	}
 
-	// Don't take into account inconsistent progress in a message with a terminal status.
-	if checkStates.IsTerminal(checkMssg.Status) && (checkProgress != 1.0) {
-		_ = level.Error(s.logger).Log("FixingInvalidProgressInTerminalStatus", checkProgress, "Status", checkMssg.Status)
-		checkProgress = 1
-		checkMssg.Progress = &checkProgress
+	_, err = s.db.UpsertCheck(scanID, checkID, checkMssg, api.CheckStates.LessOrEqual(checkMssg.Status))
+	if err != nil {
+		return err
+	}
+	// If the message does not have any status specified is because it is only
+	// for comunicating other info like the url of the logs, so we don't need to
+	// take it into account for sending metrics or publising a status change.
+	if checkMssg.Status == "" {
+		return nil
+	}
+	// As a check message does not contain all the information
+	// of a check we must merge with the the info of the check in the DB.
+	check := mergeChecks(dbCheck, checkMssg)
+	if err != nil {
+		return err
+	}
+	s.pushCheckMetrics(check)
+	err = s.notifyCheck(check)
+	if err != nil {
+		return err
 	}
 
-	// The progress could still be incorrect if the check is not in a terminal status.
-	// In that case we want to discard the message because we can not deduce the progress
-	// from the status.
-	if checkProgress > 1.0 || checkProgress < 0.0 {
-		_ = level.Error(s.logger).Log("NotValidProgress", checkMssg.Progress)
+	// If the status of the check is not terminal it will not affect the status
+	// of the scan, so we are done.
+	if !api.CheckStates.IsTerminal(checkMssg.Status) {
 		return nil
 	}
 
-	// Only update scan and checks data if there is an status change.
-	// Intermediate check messages data (e.g.: progress reporting) are not persisted.
-	// We have to take into account the particular check message sent by the agent for
-	// report and raw data which does not state an explicit status.
-	if checkMssg.Status == "" || checkStates.IsHigher(checkMssg.Status, dbCheck.Status) {
-		checkCount, err := s.db.UpsertCheck(scanID, checkID, checkMssg, checkStates.LessOrEqual(checkMssg.Status))
-		if err != nil {
-			return err
-		}
-		if checkCount == 0 {
-			_ = level.Info(s.logger).Log("NoEffectProcessingCheckUpdate", string(msg))
-		}
-
-		scanCount, scan, err := s.updateScanStatus(scanID)
-		if err != nil {
-			return err
-		}
-		if scanCount > 0 {
-			_ = level.Info(s.logger).Log("ScanStatusUpdated", string(msg))
-			_ = level.Debug(s.logger).Log("ScanStatusSet", scanID.String()+";"+util.Ptr2Str(scan.Status))
-		}
-
-		check := mergeChecks(dbCheck, checkMssg)
-
-		// If check message implies a status change from the
-		// one stored in DB, propagate it and push metrics.
-		if checkMssg.Status != "" && checkCount > 0 {
-			err = s.notifyCheck(check, util.Ptr2Str(scan.ExternalID))
-			if err != nil {
-				return err
-			}
-		}
-
-		// If the current scans is finished and this check state update was the one
-		// that caused it to be in that state then we notify the scan is finished.
-		if scanCount > 0 && *scan.Status == ScanStatusFinished {
-			err = s.notifyScan(scanID)
-			if err != nil {
-				return err
-			}
-		}
+	// Count the check as finished in its scan. Note that this operation is
+	// idempotent, that means: even if called multiple times, for a given check
+	// it will only increase by one the number of checks finished in the scan.
+	_, err = s.db.AddCheckAsFinished(checkID)
+	if err != nil {
+		return err
 	}
-
-	return nil
+	scanCount, status, err := s.updateScanStatus(scanID)
+	if err != nil {
+		return err
+	}
+	if scanCount > 0 {
+		_ = level.Info(s.logger).Log("ScanStatusUpdated", string(msg))
+		_ = level.Debug(s.logger).Log("ScanStatusSet", scanID.String()+";"+status)
+	}
+	if status == ScanStatusFinished {
+		err = s.notifyScan(scanID)
+	}
+	return err
 }
 
 func (s ScansService) notifyScan(scanID uuid.UUID) error {
@@ -411,9 +414,7 @@ func (s ScansService) notifyScan(scanID uuid.UUID) error {
 	return s.scansNotifier.Push(scan.ToScanNotification(), nil)
 }
 
-func (s ScansService) notifyCheck(check api.Check, programID string) error {
-	s.pushCheckMetrics(check, programID)
-
+func (s ScansService) notifyCheck(check api.Check) error {
 	ctname := "unknown"
 	if check.ChecktypeName != nil {
 		ctname = *check.ChecktypeName
@@ -425,54 +426,53 @@ func (s ScansService) notifyCheck(check api.Check, programID string) error {
 	return s.checksNotifier.Push(check.ToCheckNotification(), attributes)
 }
 
-func (s ScansService) updateScanStatus(id uuid.UUID) (int64, api.Scan, error) {
-	scan, err := s.db.GetScanByID(id)
+func (s ScansService) updateScanStatus(id uuid.UUID) (int64, string, error) {
+	scan, err := s.db.GetScanStatus(id)
 	if errors.IsKind(err, errors.ErrNotFound) {
-		// We don't have any information regarding this scan, either because we
-		// received a check update before a CreateScan finished or the scan that
-		// the check belongs to was not created using the scan engine. In any
-		// case we try to create an entry in the scans table with basic data.
-		count, errInit := s.initScanStatus(id)
-		return count, api.Scan{}, errInit
+		return 0, "", err
 	}
-
 	if err != nil {
-		return 0, api.Scan{}, err
+		return 0, "", err
 	}
 
-	// TODO: Remove this branch when the scan engine removes support for creating
-	// the checks synchronously because there won't be any scan without
-	// CheckCount
+	if scan.Status == nil {
+		err := fmt.Errorf("scan with id %s does not have mandatory field status", id.String())
+		return 0, "", err
+	}
+
+	if util.Ptr2Str(scan.Status) == ScanStatusFinished {
+		return 0, ScanStatusFinished, nil
+	}
+
 	if scan.CheckCount == nil {
-		// We don't know (hopefully yet) the number of the checks that compose
-		// the scan so we will just try to update the status of the scan to
-		// RUNNING.
-		statusRunning := ScanStatusRunning
-		scan.Status = &statusRunning
-		_ = level.Warn(s.logger).Log("UnableToCalculateScanProgress", id.String())
-		count, err := s.db.UpdateScan(id, api.Scan{ID: id, Status: scan.Status}, []string{ScanStatusRunning})
-		return count, scan, err
+		err := fmt.Errorf("scan with id %s does not have mandatory field CheckCount", id.String())
+		return 0, "", err
 	}
 
 	if *scan.CheckCount < 1 {
 		_ = level.Error(s.logger).Log(ErrAtLeastOneTargetAndChecktype)
-		return 0, api.Scan{}, ErrAtLeastOneTargetAndChecktype
+		return 0, "", ErrAtLeastOneTargetAndChecktype
 	}
 
-	n := *scan.CheckCount
-
-	if scan.Status != nil && util.Ptr2Str(scan.Status) == ScanStatusFinished {
-		return 0, scan, nil
+	if scan.ChecksFinished == nil {
+		err := fmt.Errorf("scan with id %s does not have mandatory field ChecksFinished", id.String())
+		return 0, "", err
 	}
-
-	stats, err := s.db.GetScanStats(scan.ID)
-	if err != nil {
-		return 0, api.Scan{}, err
+	status := *scan.Status
+	count := *scan.CheckCount
+	finished := *scan.ChecksFinished
+	progress := float32(finished) / float32(count)
+	update := api.Scan{}
+	update.ID = id
+	update.Progress = &progress
+	if (status == ScanStatusRunning) && (count == finished) {
+		status = ScanStatusFinished
+		update.Status = &status
+		now := time.Now()
+		update.EndTime = &now
 	}
-	update := statusFromChecks(scan, stats, float32(n), s.logger)
-	count, err := s.db.UpdateScan(id, update, []string{ScanStatusRunning})
-
-	// Push scan progress metrics
+	n, err := s.db.UpdateScan(id, update, []string{ScanStatusRunning})
+	// Push scan progress metrics.
 	s.metricsClient.Push(metrics.Metric{
 		Name:  scanCompletionMetric,
 		Typ:   metrics.Histogram,
@@ -480,20 +480,7 @@ func (s ScansService) updateScanStatus(id uuid.UUID) (int64, api.Scan, error) {
 		Tags:  []string{componentTag, buildScanTag(util.Ptr2Str(scan.Tag), util.Ptr2Str(scan.ExternalID))},
 	})
 
-	return count, update, err
-}
-
-func (s ScansService) initScanStatus(id uuid.UUID) (int64, error) {
-	status := ScanStatusRunning
-	var progress float32
-	now := time.Now()
-	scanUpdate := api.Scan{
-		Status:    &status,
-		Progress:  &progress,
-		StartTime: &now,
-		ID:        id,
-	}
-	return s.db.UpdateScan(id, scanUpdate, []string{ScanStatusRunning})
+	return n, status, err
 }
 
 // pushScanMetrics pushes metrics related to the scan status and its checks if applicable.
@@ -520,8 +507,14 @@ func (s ScansService) pushScanMetrics(scanStatus, teamTag, programID string, sta
 }
 
 // pushCheckMetrics pushes metrics related to the check status.
-func (s ScansService) pushCheckMetrics(check api.Check, programID string) {
-	scanTag := buildScanTag(util.Ptr2Str(check.Tag), programID)
+func (s ScansService) pushCheckMetrics(check api.Check) {
+	var program, team string
+	if check.Metadata != nil {
+		metadata := *check.Metadata
+		program = metadata["program"]
+		team = metadata["team"]
+	}
+	scanTag := buildScanTag(team, program)
 	checkStatusTag := fmt.Sprint("checkstatus:", check.Status)
 	checktypeTag := fmt.Sprint("checktype:", util.Ptr2Str(check.ChecktypeName))
 
@@ -555,43 +548,6 @@ func buildScanTag(teamTag string, programID string) string {
 	}
 
 	return fmt.Sprint("scan:", teamLabel, "-", programLabel)
-}
-
-func statusFromChecks(scan api.Scan, checkStats map[string]int, n float32, l log.Logger) api.Scan {
-	var finished float32
-	anyAborted := false
-	level.Debug(l).Log("ScanStats", fmt.Sprintf("%+v", checkStats))
-	for status, count := range checkStats {
-		if status == "" || count == 0 {
-			continue
-		}
-		if checkStates.IsTerminal(status) {
-			finished = finished + float32(count)
-			if status == "ABORTED" {
-				anyAborted = true
-			}
-		}
-	}
-	var p float32
-	var status string
-	var endTime *time.Time
-	if finished == n {
-		p = 1.0
-		if anyAborted {
-			status = ScanStatusAborted
-		} else {
-			status = ScanStatusFinished
-		}
-		now := time.Now()
-		endTime = &now
-	} else {
-		p = finished / n
-		status = ScanStatusRunning
-	}
-	scan.Progress = &p
-	scan.Status = &status
-	scan.EndTime = endTime
-	return scan
 }
 
 func mergeChecks(old api.Check, new api.Check) api.Check {

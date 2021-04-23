@@ -57,6 +57,38 @@ func (db DB) Close() error {
 	return db.db.Close()
 }
 
+// ExecRaw allows to execute a query on the underlaying Postgresql store
+// directly passing parameters. The query must set the parameters in the query
+// using ?. The function returns the number of rows affected by the query.
+func (db DB) ExecRaw(st string, params ...interface{}) (int64, error) {
+	st = db.db.Rebind(st)
+	res, err := db.db.Exec(st, params...)
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
+}
+
+// QueryRaw executes a raw query and returns the data loaded in the given result
+// structure. The result parameter must be a pointer to an structure, for
+// instance &Example{} with fields matches the columns returned by the query.
+// The function expects the query to return just one row.
+func (db DB) QueryRaw(query string, result []interface{}, params ...interface{}) error {
+	st := db.db.Rebind(query)
+	res, err := db.db.Query(st, params...)
+	if err != nil {
+		return err
+	}
+	defer res.Close() // nolint
+	for res.Next() {
+		err = res.Scan(result...)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // InsertDocWithID Creates a new document.
 func (db DB) InsertDocWithID(table string, id uuid.UUID, doc []byte) error {
 	strExec := `INSERT INTO %s (id,data,created_at,updated_at) VALUES (?,?,?,?)`
@@ -165,22 +197,6 @@ func (db DB) DeleteChildDocs(table string, parentID uuid.UUID) error {
 	st = db.db.Rebind(st)
 	_, err := db.db.Exec(st, parentID)
 	return err
-}
-
-// UpdateChildDoc updates a document that belongs to a parent document.
-func (db DB) UpdateChildDoc(table string, parentID, id uuid.UUID, path []byte, partialDoc []byte) (int64, error) {
-	strExec := `UPDATE %s SET data = jsonb_set(data, ?,?, true) WHERE id = ? AND parent_id = ?`
-	st := fmt.Sprintf(strExec, table)
-	st = db.db.Rebind(st)
-	res, err := db.db.Exec(st, path, partialDoc, id)
-	if err != nil {
-		return 0, nil
-	}
-	count, err := res.RowsAffected()
-	if err != nil {
-		return 0, nil
-	}
-	return count, nil
 }
 
 // UpsertChildDoc adds or updates new document as a child of an existing one.

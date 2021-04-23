@@ -1,4 +1,4 @@
-package service
+package api
 
 import (
 	"reflect"
@@ -75,7 +75,7 @@ func TestLessOrEqual(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		if states := checkStates.LessOrEqual(tc.state); !reflect.DeepEqual(states, tc.want) {
+		if states := CheckStates.LessOrEqual(tc.state); !reflect.DeepEqual(states, tc.want) {
 			t.Fatalf("expected:\n%v\nbut got:\n%v", tc.want, states)
 		}
 	}
@@ -148,7 +148,7 @@ func TestHigh(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		if states := checkStates.High(tc.state); !reflect.DeepEqual(states, tc.want) {
+		if states := CheckStates.High(tc.state); !reflect.DeepEqual(states, tc.want) {
 			t.Fatalf("expected:\n%v\nbut got:\n%v", tc.want, states)
 		}
 	}
@@ -198,7 +198,7 @@ func TestIsHigher(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		if got := checkStates.IsHigher(tc.status, tc.base); got != tc.want {
+		if got := CheckStates.IsHigher(tc.status, tc.base); got != tc.want {
 			t.Fatalf("expected IsHigher for %s against %s to be %v, but got %v",
 				tc.status, tc.base, tc.want, got)
 		}

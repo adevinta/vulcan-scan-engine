@@ -44,6 +44,7 @@ type Scan struct {
 	LastTargetCheckGCreated *int                           `json:"last_target_check_g_created,omitempty"`
 	LastCheckCreated        *int                           `json:"last_check_created,omitempty"`
 	ChecksCreated           *int                           `json:"checks_created,omitempty"`
+	ChecksFinished          *int                           `json:"checks_finished,omitempty"`
 	ChecktypesInfo          map[string]map[string]struct{} `json:"checkstypes_info,omitempty"`
 }
 
@@ -99,6 +100,7 @@ type Check struct {
 	CreatedAt     *time.Time         `json:"created_at,omitempty"`
 	UpdatedAt     *time.Time         `json:"updated_at,omitempty"`
 	Timeout       *int               `json:"timeout,omitempty"`
+	CheckAdded    *bool              `json:"check_added,omitempty"`
 	Data          []byte             `json:"-"`
 }
 

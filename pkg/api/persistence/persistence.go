@@ -12,7 +12,18 @@ import (
 
 	"github.com/adevinta/vulcan-scan-engine/pkg/api"
 	"github.com/adevinta/vulcan-scan-engine/pkg/api/persistence/db"
+
 	uuid "github.com/satori/go.uuid"
+)
+
+const (
+	errNoInitChecksFinishedStr = `pq: null value in column "data" violates not-null constraint`
+)
+
+var (
+	// ErrChecksFinishedNotInitialized is returned by the AddCheckAsFinished when trying to add
+	// a check finished to its scan.
+	ErrChecksFinishedNotInitialized = errors.New("field checks_finished is not initialized")
 )
 
 type ScansStore interface {
@@ -28,6 +39,8 @@ type ScansStore interface {
 	GetCheckByID(id uuid.UUID) (api.Check, error)
 	DeleteScanChecks(scanID uuid.UUID) error
 	GetScanIDForCheck(ID uuid.UUID) (uuid.UUID, error)
+	AddCheckAsFinished(checkID uuid.UUID) (int64, error)
+	GetScanStatus(ID uuid.UUID) (api.Scan, error)
 }
 
 // Persistence implements ScansStore interface
@@ -87,6 +100,35 @@ func (db Persistence) UpdateScan(id uuid.UUID, scan api.Scan, updateStates []str
 	count, err := db.store.UpsertDocument(id, scan, condition, args...)
 	return count, err
 
+}
+
+// AddCheckAsFinished mark the given check as finished in the given scan by
+// increasing the the number the field ChecksFinished in the giver scan. The
+// operation is idempotent That is if for a given scanID and CheckID the
+// operation will only increase the field ChecksFinished of the scan one time,
+// no matters the number of times it is called.
+func (db Persistence) AddCheckAsFinished(checkID uuid.UUID) (int64, error) {
+	query := `
+	WITH if_check_was_not_added AS(
+    SELECT parent_id as scan_id FROM checks WHERE  checks.id=? AND
+    data->'check_added' is NULL
+    ),
+   add_check AS (
+   UPDATE scans SET data =  data || ('{"checks_finished": ' || ((data->>'checks_finished')::int + 1) || '}')::jsonb
+   FROM if_check_was_not_added as scan_to_add
+   WHERE scans.id = scan_to_add.scan_id
+   RETURNING scans.id
+   )
+   UPDATE checks SET data = data || '{"check_added":true}', updated_at=?
+   FROM add_check as scan
+   WHERE checks.id=?
+	`
+	now := time.Now()
+	n, err := db.store.ExecRaw(query, checkID, now, checkID)
+	if err != nil && err.Error() == errNoInitChecksFinishedStr {
+		err = ErrChecksFinishedNotInitialized
+	}
+	return n, err
 }
 
 // UpsertCheck adds or updates a check of a given scan.
@@ -204,6 +246,29 @@ func (db Persistence) GetCheckByID(id uuid.UUID) (api.Check, error) {
 	c := api.Check{}
 	err := db.store.GetDocByIDFromDocType(&c, id)
 	return c, err
+}
+
+// GetScanStatus returns a scan struct with only the fields: Status, CheckCount, ChecksFinished
+// filled.
+func (db Persistence) GetScanStatus(ID uuid.UUID) (api.Scan, error) {
+	query := `SELECT data->>'status' as status, 
+	data->'checks_finished' as checks_finished,
+	data->'check_count' as check_count FROM scans WHERE id=?`
+	s := new(api.Scan)
+	var (
+		count, finished int
+		status          string
+	)
+	rest := []interface{}{&status, &finished, &count}
+	err := db.store.QueryRaw(query, rest, ID)
+	if err != nil {
+		return api.Scan{}, err
+	}
+	s.ID = ID
+	s.Status = &status
+	s.CheckCount = &count
+	s.ChecksFinished = &finished
+	return *s, nil
 }
 
 // GetScanStats returns the number of checks by status for the given scan.

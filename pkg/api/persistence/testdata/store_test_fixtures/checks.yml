@@ -12,11 +12,11 @@
 
 - id: "c3b5bfe8-4e1d-11d8-9c2d-fa7ae01bbeaa"
   parent_id : "a3b5af18-4e1d-11e8-9c2d-fa7ae01bbebc"
-  data: '{ "status": "FINISHED", "target": "localhost"}'
+  data: '{ "status": "FINISHED", "target": "localhost", "check_added": true, "scan_id": "a3b5af18-4e1d-11e8-9c2d-fa7ae01bbebc"}'
 
 - id: "b3b5ca18-4e2d-22e8-9c2d-fa7ad01bbeba"
   parent_id : "a3b5ca18-4e2d-22e8-9c2d-fa7ad01bbeba"
-  data: '{"status": "CREATED", "target": "localhost"}'
+  data: '{"status": "CREATED", "target": "localhost", "scan_id":"a3b5ca18-4e2d-22e8-9c2d-fa7ad01bbeba"}'
 
 - id: "a3b5ca18-4e2d-22e8-9c2d-fa7ad03bbfaa"
   parent_id : "a3b5ca18-4e2d-22e8-9c2d-fa7ad01bbeba"
