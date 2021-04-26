@@ -91,12 +91,15 @@ func (s *SNSNotifier) Push(message interface{}, attributes map[string]string) er
 		TopicArn:          aws.String(s.c.TopicArn),
 		MessageAttributes: attrs,
 	}
-	_ = level.Debug(s.l).Log("PushNotificationMessage", aws.StringValue(input.Message))
-	_, err = s.sns.Publish(input)
+
+	output, err := s.sns.Publish(input)
 	if err != nil {
-		_ = level.Error(s.l).Log("ErrorPushNotification", err)
+		_ = level.Error(s.l).Log("ErrorPushNotification", err, "Message", aws.StringValue(input.Message))
 		return (err)
 	}
-	_ = level.Debug(s.l).Log("PushNotification", "OK")
+	_ = level.Debug(s.l).Log(
+		"PushNotification", "OK",
+		"Message", aws.StringValue(input.Message),
+		"MessageID", aws.StringValue(output.MessageId))
 	return nil
 }
