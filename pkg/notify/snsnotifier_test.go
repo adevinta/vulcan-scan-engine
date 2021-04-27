@@ -85,7 +85,6 @@ func TestSNSNotifier_Push(t *testing.T) {
 }
 
 func TestPrepareMessageAttributes(t *testing.T) {
-
 	tests := []struct {
 		name       string
 		attributes map[string]string
