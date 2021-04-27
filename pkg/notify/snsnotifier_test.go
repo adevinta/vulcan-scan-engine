@@ -84,6 +84,40 @@ func TestSNSNotifier_Push(t *testing.T) {
 	}
 }
 
+func TestPrepareMessageAttributes(t *testing.T) {
+
+	tests := []struct {
+		name       string
+		attributes map[string]string
+		want       map[string]*sns.MessageAttributeValue
+	}{
+		{
+			name:       "PushesMsgsToTopic",
+			attributes: map[string]string{"a": "ONE", "b": "TWO"},
+			want: map[string]*sns.MessageAttributeValue{
+				"a": {
+					DataType:    strToPtr("String"),
+					StringValue: strToPtr("ONE"),
+				},
+				"b": {
+					DataType:    strToPtr("String"),
+					StringValue: strToPtr("TWO"),
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := prepareMessageAttributes(tt.attributes)
+
+			diff := cmp.Diff(got, tt.want)
+			if diff != "" {
+				t.Errorf("want != got. Diffs:%s", diff)
+			}
+		})
+	}
+}
+
 func strToPtr(s string) *string {
 	return &s
 }

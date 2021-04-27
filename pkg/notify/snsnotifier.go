@@ -75,21 +75,11 @@ func (s *SNSNotifier) Push(message interface{}, attributes map[string]string) er
 	if err != nil {
 		return err
 	}
-	var attrs map[string]*sns.MessageAttributeValue
-	if attributes != nil {
-		attrs = make(map[string]*sns.MessageAttributeValue)
-		t := "String"
-		for n, v := range attributes {
-			attrs[n] = &sns.MessageAttributeValue{
-				DataType:    &t,
-				StringValue: &v,
-			}
-		}
-	}
+
 	input := &sns.PublishInput{
 		Message:           aws.String(string(content)),
 		TopicArn:          aws.String(s.c.TopicArn),
-		MessageAttributes: attrs,
+		MessageAttributes: prepareMessageAttributes(attributes),
 	}
 
 	output, err := s.sns.Publish(input)
@@ -108,4 +98,22 @@ func (s *SNSNotifier) Push(message interface{}, attributes map[string]string) er
 		"Message", aws.StringValue(input.Message),
 		"MessageID", messageID)
 	return nil
+}
+
+func prepareMessageAttributes(attributes map[string]string) map[string]*sns.MessageAttributeValue {
+	var attrs map[string]*sns.MessageAttributeValue
+	if attributes != nil {
+		attrs = make(map[string]*sns.MessageAttributeValue)
+		t := "String"
+		for n, v := range attributes {
+			// See: https://bryce.is/writing/code/jekyll/update/2015/11/01/3-go-gotchas.html
+			localV := v
+			attrs[n] = &sns.MessageAttributeValue{
+				DataType:    &t,
+				StringValue: &localV,
+			}
+		}
+	}
+
+	return attrs
 }
