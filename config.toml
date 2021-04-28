@@ -15,11 +15,11 @@ host = "$PERSISTENCE_HOST"
 
 [sqs]
 disabled = false
-number_of_processors = 8
+number_of_processors = $CHECKS_SQS_PROCESSORS
 log_messages = false
-polling_interval = 10
-wait_time = 20
-timeout = 30
+polling_interval = $CHECKS_SQS_INTERVAL
+wait_time = $CHECKS_SQS_WAIT
+timeout = $CHECKS_SQS_TIMEOUT
 queue_arn = "$CHECKS_SQS_ARN"
 endpoint = "$CHECKS_SQS_ENDPOINT"
 

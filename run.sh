@@ -5,6 +5,11 @@
 # export default values for required vars if not set
 export PORT=${PORT:-8080}
 export DOGSTATSD_ENABLED=${DOGSTATSD_ENABLED:-false}
+export CHECKS_SQS_PROCESSORS=${CHECKS_SQS_PROCESSORS:-8}
+export CHECKS_SQS_INTERVAL=${CHECKS_SQS_INTERVAL:-10}
+export CHECKS_SQS_WAIT=${CHECKS_SQS_WAIT:-20}
+export CHECKS_SQS_TIMEOUT=${CHECKS_SQS_TIMEOUT:-30}
+
 
 # Apply env variables
 cat config.toml | envsubst > run.toml
