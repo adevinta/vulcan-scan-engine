@@ -749,6 +749,8 @@ func TestPersistence_GetScanStatus(t *testing.T) {
 				Status:         util.Str2Ptr("RUNNING"),
 				CheckCount:     util.Int2Ptr(2),
 				ChecksFinished: util.Int2Ptr(1),
+				ExternalID:     util.Str2Ptr("1f5ae7c9-1fe8-4b3d-9507-ac41542728bb@periodic-full-scan"),
+				Tag:            util.Str2Ptr("sdrn:schibsted:team:security"),
 			},
 		},
 	}
