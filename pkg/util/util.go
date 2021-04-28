@@ -21,8 +21,9 @@ import (
 )
 
 const (
-	defaultDBName = "postgres"
-	dialect       = "postgres"
+	defaultDBName        = "postgres"
+	dialect              = "postgres"
+	defaultFlywayVersion = "7"
 )
 
 type connStr struct {
@@ -94,19 +95,22 @@ func RunFlywayCmd(conn, migrationsDir, flywayCommand string) error {
 	if err != nil {
 		return err
 	}
+	flywayVersion := defaultFlywayVersion
+	if value, ok := os.LookupEnv("FLYWAY_VERSION"); ok {
+		flywayVersion = value
+	}
 	addr := fmt.Sprintf("postgresql://%s:%s/%s", c.Host, c.Port, c.Dbname)
 	cmdName := "docker"
 	cmdArgs := []string{
 		"run",
 		"--net=host",
 		"-v",
-		migrationsDir + ":/scripts",
-		"boxfuse/flyway",
+		migrationsDir + ":/flyway/sql",
+		"flyway/flyway:" + flywayVersion,
 		"-user=" + c.User,
 		"-password=" + c.Password,
 		"-url=jdbc:" + addr,
 		"-baselineOnMigrate=true",
-		"-locations=filesystem:/scripts/",
 		flywayCommand}
 
 	cmd := exec.Command(cmdName, cmdArgs...)
