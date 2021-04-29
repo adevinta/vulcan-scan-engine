@@ -472,12 +472,13 @@ func (s ScansService) updateScanStatus(id uuid.UUID) (int64, string, error) {
 		update.EndTime = &now
 	}
 	n, err := s.db.UpdateScan(id, update, []string{ScanStatusRunning})
+	tag := buildScanTag(util.Ptr2Str(scan.Tag), util.Ptr2Str(scan.ExternalID))
 	// Push scan progress metrics.
 	s.metricsClient.Push(metrics.Metric{
 		Name:  scanCompletionMetric,
 		Typ:   metrics.Histogram,
 		Value: float64(util.Ptr2Float(update.Progress)),
-		Tags:  []string{componentTag, buildScanTag(util.Ptr2Str(scan.Tag), util.Ptr2Str(scan.ExternalID))},
+		Tags:  []string{componentTag, tag},
 	})
 
 	return n, status, err

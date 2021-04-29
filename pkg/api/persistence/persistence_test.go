@@ -329,6 +329,8 @@ func TestPersistence_AddCheckAsFinished(t *testing.T) {
 			wantN:   1,
 			wantScan: api.Scan{
 				ID:             UUIDFromString(fixtureScans["Scan1"].ID),
+				ExternalID:     util.Str2Ptr("1f5ae7c9-1fe8-4b3d-9507-ac41542728bb@periodic-full-scan"),
+				Tag:            util.Str2Ptr("sdrn:schibsted:team:security"),
 				Status:         &runningState,
 				Progress:       testutil.FloatPointer(0.5),
 				CheckCount:     testutil.IntPointer(2),
@@ -441,6 +443,8 @@ func TestPersistence_GetScans(t *testing.T) {
 			want: []api.Scan{
 				{
 					ID:             UUIDFromString("c3b5af18-4e1d-11e8-9c2d-fa7ae01bbebc"),
+					ExternalID:     util.Str2Ptr("1f5ae7c9-1fe8-4b3d-9507-ac41542728bb@periodic-full-scan"),
+					Tag:            util.Str2Ptr("sdrn:schibsted:team:security"),
 					Status:         &runningState,
 					ChecksFinished: util.Int2Ptr(1),
 					Progress:       testutil.FloatPointer(0.5),
@@ -492,6 +496,8 @@ func TestPersistence_GetScans(t *testing.T) {
 			want: []api.Scan{
 				{
 					ID:             UUIDFromString("c3b5af18-4e1d-11e8-9c2d-fa7ae01bbebc"),
+					ExternalID:     util.Str2Ptr("1f5ae7c9-1fe8-4b3d-9507-ac41542728bb@periodic-full-scan"),
+					Tag:            util.Str2Ptr("sdrn:schibsted:team:security"),
 					ChecksFinished: util.Int2Ptr(1),
 					Status:         &runningState,
 					Progress:       testutil.FloatPointer(0.5),
@@ -749,6 +755,8 @@ func TestPersistence_GetScanStatus(t *testing.T) {
 				Status:         util.Str2Ptr("RUNNING"),
 				CheckCount:     util.Int2Ptr(2),
 				ChecksFinished: util.Int2Ptr(1),
+				ExternalID:     util.Str2Ptr("1f5ae7c9-1fe8-4b3d-9507-ac41542728bb@periodic-full-scan"),
+				Tag:            util.Str2Ptr("sdrn:schibsted:team:security"),
 			},
 		},
 	}

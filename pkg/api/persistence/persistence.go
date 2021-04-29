@@ -253,13 +253,15 @@ func (db Persistence) GetCheckByID(id uuid.UUID) (api.Check, error) {
 func (db Persistence) GetScanStatus(ID uuid.UUID) (api.Scan, error) {
 	query := `SELECT data->>'status' as status, 
 	data->'checks_finished' as checks_finished,
-	data->'check_count' as check_count FROM scans WHERE id=?`
+	data->'check_count', data->>'tag', data->>'external_id' as check_count FROM scans WHERE id=?`
 	s := new(api.Scan)
 	var (
 		count, finished int
 		status          string
+		tag             string
+		externalID      string
 	)
-	rest := []interface{}{&status, &finished, &count}
+	rest := []interface{}{&status, &finished, &count, &tag, &externalID}
 	err := db.store.QueryRaw(query, rest, ID)
 	if err != nil {
 		return api.Scan{}, err
@@ -268,6 +270,8 @@ func (db Persistence) GetScanStatus(ID uuid.UUID) (api.Scan, error) {
 	s.Status = &status
 	s.CheckCount = &count
 	s.ChecksFinished = &finished
+	s.Tag = &tag
+	s.ExternalID = &externalID
 	return *s, nil
 }
 
