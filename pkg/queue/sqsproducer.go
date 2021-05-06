@@ -91,10 +91,10 @@ type MultiSQSProducer struct {
 
 // NewMultiSQSProducer creates a new MultipleSQSProducer given a map containing
 // the name of the queues as keys and the ARN for those queues as values.
-func NewMultiSQSProducer(queues map[string]string, log log.Logger) (*MultiSQSProducer, error) {
+func NewMultiSQSProducer(queues map[string]string, endpoint string, log log.Logger) (*MultiSQSProducer, error) {
 	var m = make(map[string]*SQSProducer)
 	for n, a := range queues {
-		producer, err := NewSQSProducer(a, "", log)
+		producer, err := NewSQSProducer(a, endpoint, log)
 		if err != nil {
 			return nil, err
 		}

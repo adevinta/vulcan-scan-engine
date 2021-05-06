@@ -63,15 +63,14 @@ Those are the variables you have to use:
 |PG_CA_B64|A base64 encoded ca certificate||
 |PERSISTENCE_HOST||persistence.vulcan.com|
 |CHECKS_SQS_ARN|ARN for the checks creation queue|arn:aws:sqs:xxx:123456789012:yyy|
-|CHECKS_SQS_ENDPOINT|Endpoint for the checks creation queue (optional)|http://custom-aws-endpoint|
+|AWS_SQS_ENDPOINT|Endpoint for SQS creation queue (optional)|http://custom-aws-endpoint|
 |CHECKS_SQS_PROCESSORS|Number of workers processing check updates|8|
 |CHECKS_SQS_INTERVAL||10|
 |CHECKS_SQS_WAIT||20|
 |CHECKS_SQS_TIMEOUT||30|
 |SCANS_SNS_ARN|ARN for the scans notification topic|arn:aws:sns:xxx:123456789012:yyy|
-|SCANS_SNS_ENDPOINT|Endpoint for the scans notification topic (optional)|http://custom-aws-endpoint|
 |CHECKS_SNS_ARN|ARN for the checks status notification topic|arn:aws:sns:xxx:123456789012:yyy|
-|CHECKS_SNS_ENDPOINT|Endpoint for the checks status notification topic (optional)|http://custom-aws-endpoint|
+|AWS_SNS_ENDPOINT|Endpoint for SNS topic (optional)|http://custom-aws-endpoint|
 |CHECKS_CREATOR_WORKERS|Number of workers to run for checks creation||
 |CHECKS_CREATOR_PERIOD|Period (seconds) for which workers should look for checks pending to be created||
 |QUEUES_DEFAULT_ARN|Default checks queue ARN|arn:aws:sqs:xxx:123456789012:yyy|
