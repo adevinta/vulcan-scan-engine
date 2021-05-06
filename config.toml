@@ -21,16 +21,16 @@ polling_interval = $CHECKS_SQS_INTERVAL
 wait_time = $CHECKS_SQS_WAIT
 timeout = $CHECKS_SQS_TIMEOUT
 queue_arn = "$CHECKS_SQS_ARN"
-endpoint = "$CHECKS_SQS_ENDPOINT"
+endpoint = "$AWS_SQS_ENDPOINT"
 
 [scans_sns]
 topic_arn = "$SCANS_SNS_ARN"
-endpoint = "$SCANS_SNS_ENDPOINT"
+endpoint = "$AWS_SNS_ENDPOINT"
 enabled = true
 
 [checks_sns]
 topic_arn = "$CHECKS_SNS_ARN"
-endpoint = "$CHECKS_SNS_ENDPOINT"
+endpoint = "$AWS_SNS_ENDPOINT"
 enabled = true
 
 [metrics]

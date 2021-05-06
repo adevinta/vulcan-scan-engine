@@ -166,7 +166,7 @@ func startServer() error {
 
 	streamClient := stream.NewClient(cfg.Stream.URL)
 
-	producer, err := queue.NewMultiSQSProducer(cfg.CTQueues.ARNs(), logger)
+	producer, err := queue.NewMultiSQSProducer(cfg.CTQueues.ARNs(), cfg.SQS.Endpoint, logger)
 	if err != nil {
 		return err
 	}
