@@ -76,12 +76,12 @@ var (
 				Options:      strToPtr("{\"option\":1}"),
 			},
 		},
-		"vulcan-nmap": {
+		"vulcan-docker": {
 			Checktype: &client.ChecktypeType{
 				ID:           mustUUID2FromString("8f8727fe-55bc-11eb-ae93-0242ac130002"),
 				Assets:       []string{"Hostname"},
-				Name:         "vulcan-nmap",
-				Image:        "example.com/vulcan-checks/vulcan-nmap:1",
+				Name:         "vulcan-docker",
+				Image:        "example.com/vulcan-checks/vulcan-docker:1",
 				Enabled:      boolToPtr(true),
 				RequiredVars: []string{},
 				Timeout:      intToPtr(100),
@@ -95,7 +95,7 @@ var (
 			"vulcan-nessus":       {},
 		},
 		"IP": {
-			"vulcan-nmap": {},
+			"vulcan-docker": {},
 		},
 	}
 
