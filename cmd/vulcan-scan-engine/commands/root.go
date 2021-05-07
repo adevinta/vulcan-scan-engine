@@ -147,11 +147,7 @@ func startServer() error {
 
 	checkMetrics := &checkmetrics.Checks{Client: metricsClient}
 
-	scansNotifier, err := notify.NewSNSNotifier(cfg.ScansSNS, logger)
-	if err != nil {
-		return err
-	}
-	checksNotifier, err := notify.NewSNSNotifier(cfg.ChecksSNS, logger)
+	eventsNotifier, err := notify.NewSNSNotifier(cfg.EventsSNS, logger)
 	if err != nil {
 		return err
 	}
@@ -166,15 +162,11 @@ func startServer() error {
 
 	streamClient := stream.NewClient(cfg.Stream.URL)
 
-	producer, err := queue.NewMultiSQSProducer(cfg.CTQueues.ARNs(), cfg.SQS.Endpoint, logger)
+	jobsNotifier, err := scans.NewJobNotifier(eventsNotifier)
 	if err != nil {
 		return err
 	}
-	jobsSender, err := scans.NewJobQueueSender(producer, cfg.CTQueues.Names())
-	if err != nil {
-		return err
-	}
-	creator = scans.NewJobsCreator(st, jobsSender, apiClient, checkMetrics, logger)
+	creator = scans.NewJobsCreator(st, jobsNotifier, apiClient, checkMetrics, logger)
 	// Try to create possible pending scan checks without having to wait
 	// until the next scheduled task runs.
 	go func() {
@@ -191,7 +183,7 @@ func startServer() error {
 		sch.AddTask(t, p)
 	}
 
-	scanService := service.New(logger, st, apiClient, metricsClient, creator, scansNotifier, checksNotifier, streamClient)
+	scanService := service.New(logger, st, apiClient, metricsClient, creator, eventsNotifier, streamClient)
 
 	healthCheckService := service.HealthcheckService{
 		DB: db,

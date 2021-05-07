@@ -23,13 +23,8 @@ timeout = $CHECKS_SQS_TIMEOUT
 queue_arn = "$CHECKS_SQS_ARN"
 endpoint = "$AWS_SQS_ENDPOINT"
 
-[scans_sns]
-topic_arn = "$SCANS_SNS_ARN"
-endpoint = "$AWS_SNS_ENDPOINT"
-enabled = true
-
-[checks_sns]
-topic_arn = "$CHECKS_SNS_ARN"
+[events_sns]
+topic_arn = "$EVENTS_SNS_ARN"
 endpoint = "$AWS_SNS_ENDPOINT"
 enabled = true
 
@@ -43,12 +38,3 @@ url = "$STREAM_URL"
 num_of_workers = $CHECKS_CREATOR_WORKERS
 # in seconds.
 period =  $CHECKS_CREATOR_PERIOD
-
-[queues]
-
-    [queues.default]
-    arn = "$QUEUES_DEFAULT_ARN"
-
-    [queues.nessus]
-    arn = "$QUEUES_NESSUS_ARN"
-    checktypes = $QUEUES_NESSUS_CHECKTYPES

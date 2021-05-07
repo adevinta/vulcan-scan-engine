@@ -36,9 +36,9 @@ var (
 // for a TargetChecktypeGroup is created.
 type newCheck func(api.Check) error
 
-// JobSender send a job to be run by an agent.
-type JobSender interface {
-	Send(queueName string, checktypeName string, job Job) error
+// JobNotifier pushes a job to a topic.
+type JobNotifier interface {
+	Push(job Job, attributes map[string]string) error
 }
 
 // ChecktypesByAssettypes is used as a lookup table to check if a checktype can
@@ -58,6 +58,7 @@ type checkData struct {
 	Target        string
 	Tag           string
 	AssetType     string
+	TargetQueue   string
 	Metadata      map[string]string
 }
 
@@ -85,7 +86,7 @@ type Logger interface {
 // ChecksRunner allows to create the checks of a scan in a stateless way.
 type ChecksRunner struct {
 	store          Store
-	sender         JobSender
+	notifier       JobNotifier
 	l              Logger
 	checksListener CheckNotifier
 	ctinformer     ChecktypeInformer
@@ -94,10 +95,10 @@ type ChecksRunner struct {
 // NewJobsCreator creates and returns a new JobsCreator given its
 // dependencies.
 func NewJobsCreator(store Store,
-	sender JobSender, ctinformer ChecktypeInformer, checkListener CheckNotifier, l Logger) *ChecksRunner {
+	notifier JobNotifier, ctinformer ChecktypeInformer, checkListener CheckNotifier, l Logger) *ChecksRunner {
 	return &ChecksRunner{
 		store:          store,
-		sender:         sender,
+		notifier:       notifier,
 		l:              l,
 		ctinformer:     ctinformer,
 		checksListener: checkListener,
@@ -244,10 +245,13 @@ func (c *ChecksRunner) CreateScanChecks(id string) error {
 				if err != nil {
 					return err
 				}
-				// Send the job to be run by an agent. The sender will take care of
-				// sending to the proper default queue for the check if no
-				// queue name was specified in the checktype.
-				err = c.sender.Send(*check.QueueName, *check.ChecktypeName, j)
+				// Send the job to be run by an agent. The notifier will take care of
+				// adding additional required job attributes.
+				attributes := make(map[string]string)
+				if check.ChecktypeName != nil && *check.ChecktypeName != "" {
+					attributes["checktype_name"] = *check.ChecktypeName
+				}
+				err = c.notifier.Push(j, attributes)
 				if err != nil {
 					return err
 				}
@@ -355,7 +359,7 @@ func (c *ChecksRunner) createCheck(scan api.Scan, g api.TargetsChecktypesGroup, 
 		WebHook:       nil,
 		Report:        nil,
 		Raw:           nil,
-		QueueName:     &queue,
+		TargetQueue:   &queue,
 		Tag:           &t,
 		Assettype:     &assetType,
 		Metadata:      &meta,

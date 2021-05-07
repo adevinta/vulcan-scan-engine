@@ -45,54 +45,16 @@ type checkCreatorConfig struct {
 	Period       int `mapstructure:"period"` // seconds
 }
 
-type checktypeQueues struct {
-	ARN        string
-	Checktypes []string
-}
-
-type checktypeQueueConfig map[string]checktypeQueues
-
-// ARNs returns map with the following shape: ["queuename":"arn1"]
-func (c checktypeQueueConfig) ARNs() map[string]string {
-	var qarns = make(map[string]string)
-	for qType, q := range c {
-		qarns[qType] = q.ARN
-	}
-	return qarns
-}
-
-// Names returns a map with the following shape:
-// ["default":"default","vulcan-nessus":"nessus"]
-func (c checktypeQueueConfig) Names() map[string]string {
-	var ctQNames = make(map[string]string)
-	for qType, q := range c {
-		if qType == "default" {
-			ctQNames["default"] = "default"
-			continue
-		}
-		cts := q.Checktypes
-		if len(cts) < 1 {
-			continue
-		}
-		for _, ct := range cts {
-			ctQNames[ct] = qType
-		}
-	}
-	return ctQNames
-}
-
 type config struct {
 	Log           logConfig
 	Server        serverConfig
 	DB            dbConfig
 	Vulcan        checktypesInformer
 	SQS           queue.Config
-	ScansSNS      notify.Config `mapstructure:"scans_sns"`
-	ChecksSNS     notify.Config `mapstructure:"checks_sns"`
+	EventsSNS     notify.Config `mapstructure:"events_sns"`
 	Metrics       metricsConfig
 	Stream        streamConfig
-	ChecksCreator checkCreatorConfig   `mapstructure:"check_creator"`
-	CTQueues      checktypeQueueConfig `mapstructure:"queues"`
+	ChecksCreator checkCreatorConfig `mapstructure:"check_creator"`
 }
 
 func initConfig() {

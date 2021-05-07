@@ -35,6 +35,7 @@ type Scan struct {
 	Progress        *float32                  `json:"progress,omitempty"`
 	Trigger         *string                   `json:"trigger,omitempty"`
 	Targets         *TargetGroup              `json:"targets,omitempty"`
+	TargetQueue     *string                   `json:"target_queue,omitempty"`
 	ChecktypesGroup *ChecktypesGroup          `json:"check_types_groups,omitempty"`
 	TargetGroups    *[]TargetsChecktypesGroup `json:"target_groups,omitempty"`
 	Tag             *string                   `json:"tag,omitempty"`
@@ -92,7 +93,7 @@ type Check struct {
 	WebHook       *string            `json:"webhook,omitempty"`
 	Report        *string            `json:"report,omitempty"`
 	Raw           *string            `json:"raw,omitempty"`
-	QueueName     *string            `json:"queue_name,omitempty"`
+	TargetQueue   *string            `json:"target_queue,omitempty"`
 	Tag           *string            `json:"tag,omitempty"`
 	Assettype     *string            `json:"assettype,omitempty"`
 	Metadata      *map[string]string `json:"metadata,omitempty"`
@@ -118,7 +119,7 @@ type CheckNotification struct {
 	WebHook       string    `json:"webhook,omitempty"`
 	Report        string    `json:"report,omitempty"`
 	Raw           string    `json:"raw,omitempty"`
-	QueueName     string    `json:"queue_name,omitempty"`
+	TargetQueue   string    `json:"target_queue,omitempty"`
 	CreatedAt     time.Time `json:"created_at,omitempty"`
 	UpdatedAt     time.Time `json:"updated_at,omitempty"`
 	Tag           string    `json:"tag,omitempty"`
@@ -139,7 +140,7 @@ func (c Check) ToCheckNotification() CheckNotification {
 		WebHook:       util.Ptr2Str(c.WebHook),
 		Report:        util.Ptr2Str(c.Report),
 		Raw:           util.Ptr2Str(c.Raw),
-		QueueName:     util.Ptr2Str(c.QueueName),
+		TargetQueue:   util.Ptr2Str(c.TargetQueue),
 		CreatedAt:     util.Ptr2Time(c.CreatedAt),
 		UpdatedAt:     util.Ptr2Time(c.UpdatedAt),
 		Tag:           util.Ptr2Str(c.Tag),

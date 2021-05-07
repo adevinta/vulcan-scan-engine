@@ -49,6 +49,10 @@ const (
 	// LogFields
 	notValidProgressField = "InvalidProgress"
 	fixingProgressField   = "FixingInvalidProgress"
+
+	// EventType attributes
+	checkEventType = "check-status-event"
+	scanEventType  = "scan-event"
 )
 
 // ChecktypesInformer represents an informer for the mapping
@@ -80,23 +84,21 @@ type ScansService struct {
 	ctInformer     ChecktypesInformer
 	metricsClient  metrics.Client
 	ccreator       ChecksCreator
-	scansNotifier  notify.Notifier
-	checksNotifier notify.Notifier
+	eventsNotifier notify.Notifier
 	streamClient   stream.Client
 }
 
 // New Creates and returns ScansService with all the dependencies wired in.
 func New(logger log.Logger, db persistence.ScansStore, client ChecktypesInformer,
-	metricsClient metrics.Client, ccreator ChecksCreator, scansNotifier notify.Notifier,
-	checksNotifier notify.Notifier, streamClient stream.Client) ScansService {
+	metricsClient metrics.Client, ccreator ChecksCreator, eventsNotifier notify.Notifier,
+	streamClient stream.Client) ScansService {
 	return ScansService{
 		db:             db,
 		logger:         logger,
 		ctInformer:     client,
 		ccreator:       ccreator,
 		metricsClient:  metricsClient,
-		scansNotifier:  scansNotifier,
-		checksNotifier: checksNotifier,
+		eventsNotifier: eventsNotifier,
 		streamClient:   streamClient,
 	}
 
@@ -411,7 +413,11 @@ func (s ScansService) notifyScan(scanID uuid.UUID) error {
 
 	s.pushScanMetrics(metricsScanFinished, util.Ptr2Str(scan.Tag), util.Ptr2Str(scan.ExternalID), scanStats{})
 
-	return s.scansNotifier.Push(scan.ToScanNotification(), nil)
+	attributes := map[string]string{
+		"event_type": scanEventType,
+	}
+
+	return s.eventsNotifier.Push(scan.ToScanNotification(), attributes)
 }
 
 func (s ScansService) notifyCheck(check api.Check) error {
@@ -420,10 +426,11 @@ func (s ScansService) notifyCheck(check api.Check) error {
 		ctname = *check.ChecktypeName
 	}
 	attributes := map[string]string{
+		"event_type":     checkEventType,
 		"checktype_name": ctname,
 		"status":         check.Status,
 	}
-	return s.checksNotifier.Push(check.ToCheckNotification(), attributes)
+	return s.eventsNotifier.Push(check.ToCheckNotification(), attributes)
 }
 
 func (s ScansService) updateScanStatus(id uuid.UUID) (int64, string, error) {

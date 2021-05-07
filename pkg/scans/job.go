@@ -24,6 +24,7 @@ type Job struct {
 	Options       string            `json:"options"`       // Optional
 	RequiredVars  []string          `json:"required_vars"` // Optional
 	Metadata      map[string]string `json:"metadata"`      // Optional
+	TargetQueue   string            `json:"target_queue"`  // Optional
 }
 
 // JobFromCheck crates a Job with the required info for a check to be run by an
@@ -62,9 +63,7 @@ func JobFromCheck(c api.Check) (Job, error) {
 	}
 	j.Timeout = *c.Timeout
 
-	if c.QueueName == nil {
-		return Job{}, errors.New("queueName field is mandatory")
-	}
-	j.Timeout = *c.Timeout
+	j.TargetQueue = *c.TargetQueue
+
 	return j, nil
 }

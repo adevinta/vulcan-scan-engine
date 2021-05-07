@@ -6,6 +6,8 @@ package notify
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/arn"
@@ -15,6 +17,11 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 )
+
+// ErrNumberOfAttributesExceeded is returned when the attributes map contains
+// more than 10 attributes (which is the AWS SNS limit for SQS subscriptions).
+// See: https://docs.aws.amazon.com/sns/latest/dg/sns-message-attributes.html
+var ErrNumberOfAttributesExceeded = errors.New("message has more than 10 attributes defined")
 
 // Notifier represents a generic notifier API.
 type Notifier interface {
@@ -74,6 +81,12 @@ func (s *SNSNotifier) Push(message interface{}, attributes map[string]string) er
 	content, err := json.Marshal(&message)
 	if err != nil {
 		return err
+	}
+
+	if len(attributes) > 10 {
+		_ = level.Error(s.l).Log("ErrorPushNotification", ErrNumberOfAttributesExceeded,
+			"Message", string(content), "Attributes", fmt.Sprintf("%+v", attributes))
+		return ErrNumberOfAttributesExceeded
 	}
 
 	input := &sns.PublishInput{

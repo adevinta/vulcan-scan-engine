@@ -76,12 +76,12 @@ var (
 				Options:      strToPtr("{\"option\":1}"),
 			},
 		},
-		"vulcan-nmap": {
+		"vulcan-docker": {
 			Checktype: &client.ChecktypeType{
 				ID:           mustUUID2FromString("8f8727fe-55bc-11eb-ae93-0242ac130002"),
 				Assets:       []string{"Hostname"},
-				Name:         "vulcan-nmap",
-				Image:        "example.com/vulcan-checks/vulcan-nmap:1",
+				Name:         "vulcan-docker",
+				Image:        "example.com/vulcan-checks/vulcan-docker:1",
 				Enabled:      boolToPtr(true),
 				RequiredVars: []string{},
 				Timeout:      intToPtr(100),
@@ -95,7 +95,7 @@ var (
 			"vulcan-nessus":       {},
 		},
 		"IP": {
-			"vulcan-nmap": {},
+			"vulcan-docker": {},
 		},
 	}
 
@@ -141,7 +141,7 @@ var (
 				ChecktypesGroup: api.ChecktypesGroup{
 					Name: "CTG2",
 					Checktypes: []api.Checktype{
-						{Name: "vulcan-nmap"},
+						{Name: "vulcan-docker"},
 					},
 				},
 			},
@@ -162,7 +162,7 @@ var (
 			ChecktypeName: strToPtr("vulcan-http-headers"),
 			Image:         strToPtr("example.com/vulcan-checks/vulcan-http-headers:285"),
 			Options:       strToPtr("{}"),
-			QueueName:     strToPtr("queue1"),
+			TargetQueue:   strToPtr("queue1"),
 			Tag:           strToPtr("uuid:teamScan4"),
 			Assettype:     strToPtr("Hostname"),
 			Metadata:      &map[string]string{"program": "scan4Program", "team": "teamscan4"},
@@ -180,7 +180,7 @@ var (
 			ChecktypeName: strToPtr("vulcan-nessus"),
 			Image:         strToPtr("example.com/vulcan-checks/vulcan-nessus:2"),
 			Options:       strToPtr(`{"option":1}`),
-			QueueName:     strToPtr("queue2"),
+			TargetQueue:   strToPtr("queue2"),
 			Tag:           strToPtr("uuid:teamScan4"),
 			Assettype:     strToPtr("Hostname"),
 			Metadata:      &map[string]string{"program": "scan4Program", "team": "teamscan4"},
@@ -195,10 +195,10 @@ var (
 			Progress:      floatToPtr(0),
 			ScanIndex:     strToPtr("1_0"),
 			ChecktypeID:   strToPtr("8f8727fe-55bc-11eb-ae93-0242ac130002"),
-			ChecktypeName: strToPtr("vulcan-nmap"),
-			Image:         strToPtr("example.com/vulcan-checks/vulcan-nmap:1"),
+			ChecktypeName: strToPtr("vulcan-docker"),
+			Image:         strToPtr("example.com/vulcan-checks/vulcan-docker:1"),
 			Options:       strToPtr("{}"),
-			QueueName:     strToPtr(""),
+			TargetQueue:   strToPtr(""),
 			Tag:           strToPtr("uuid:teamScan4"),
 			Assettype:     strToPtr("IP"),
 			Metadata:      &map[string]string{"program": "scan4Program", "team": "teamscan4"},
@@ -207,7 +207,7 @@ var (
 		},
 	}
 
-	scan4Jobs = []inMemJobsSenderItem{
+	scan4Jobs = []inMemJobsNotifierItem{
 		{
 			Job: Job{
 
@@ -219,11 +219,11 @@ var (
 				ScanStartTime: time.Now(),
 				Timeout:       *checktypes["vulcan-http-headers"].Checktype.Timeout,
 				Options:       *checktypes["vulcan-http-headers"].Checktype.Options,
+				TargetQueue:   "queue1",
 				Metadata:      map[string]string{"program": "scan4Program", "team": "teamscan4"},
 				RequiredVars:  *&checktypes["vulcan-http-headers"].Checktype.RequiredVars,
 			},
-			Queue:         *checktypes["vulcan-http-headers"].Checktype.QueueName,
-			ChecktypeName: "vulcan-http-headers",
+			Attributes: map[string]string{"checktype_name": "vulcan-http-headers"},
 		},
 		{
 			Job: Job{
@@ -235,17 +235,17 @@ var (
 				Timeout:       100,
 				AssetType:     "Hostname",
 				Options:       `{"option":1}`,
+				TargetQueue:   "queue2",
 				RequiredVars:  []string{"VAR1"},
 				Metadata:      map[string]string{"program": "scan4Program", "team": "teamscan4"},
 			},
-			Queue:         "queue2",
-			ChecktypeName: "vulcan-nessus",
+			Attributes: map[string]string{"checktype_name": "vulcan-nessus"},
 		},
 		{
 			Job: Job{
 				CheckID:      "c8d7e69e-5a74-11eb-8b36-acde48001122",
 				ScanID:       "48fc7d46-53fc-11eb-ae93-0242ac130002",
-				Image:        "example.com/vulcan-checks/vulcan-nmap:1",
+				Image:        "example.com/vulcan-checks/vulcan-docker:1",
 				Target:       "192.168.0.1",
 				Timeout:      100,
 				AssetType:    "IP",
@@ -253,7 +253,7 @@ var (
 				RequiredVars: []string{},
 				Metadata:     map[string]string{"program": "scan4Program", "team": "teamscan4"},
 			},
-			ChecktypeName: "vulcan-nmap",
+			Attributes: map[string]string{"checktype_name": "vulcan-docker"},
 		},
 	}
 )
@@ -291,25 +291,23 @@ func (i inMemChecktypesInformer) DecodeChecktype(resp *http.Response) (*client.C
 	return &checktype, nil
 }
 
-type inMemJobsSender struct {
-	msgs []inMemJobsSenderItem
+type inMemJobsNotifier struct {
+	msgs []inMemJobsNotifierItem
 }
 
-func (in *inMemJobsSender) Send(queueName string, checktypeName string, j Job) error {
+func (in *inMemJobsNotifier) Push(j Job, attributes map[string]string) error {
 	msgs := in.msgs
-	msgs = append(msgs, inMemJobsSenderItem{
-		Job:           j,
-		Queue:         queueName,
-		ChecktypeName: checktypeName,
+	msgs = append(msgs, inMemJobsNotifierItem{
+		Job:        j,
+		Attributes: attributes,
 	})
 	in.msgs = msgs
 	return nil
 }
 
-type inMemJobsSenderItem struct {
-	Job           Job
-	Queue         string
-	ChecktypeName string
+type inMemJobsNotifierItem struct {
+	Job        Job
+	Attributes map[string]string
 }
 
 type inMemChecksListener struct {
@@ -326,7 +324,7 @@ func (cl *inMemChecksListener) CheckUpdated(ch api.Check, programID string) {
 func TestChecksRunner_CreateScanChecks(t *testing.T) {
 	type fields struct {
 		store    Store
-		sender   JobSender
+		notifier JobNotifier
 		listener CheckNotifier
 		l        Logger
 		pclient  ChecktypeInformer
@@ -336,7 +334,7 @@ func TestChecksRunner_CreateScanChecks(t *testing.T) {
 		name         string
 		fields       fields
 		id           string
-		stateChecker func(Store, JobSender, CheckNotifier, *testing.T)
+		stateChecker func(Store, JobNotifier, CheckNotifier, *testing.T)
 		wantErr      bool
 	}{
 		{
@@ -353,12 +351,12 @@ func TestChecksRunner_CreateScanChecks(t *testing.T) {
 				pclient: inMemChecktypesInformer{
 					Checktypes: checktypes,
 				},
-				sender: &inMemJobsSender{},
+				notifier: &inMemJobsNotifier{},
 			},
 			id: scan4ID,
-			stateChecker: func(s Store, c JobSender, listener CheckNotifier, t *testing.T) {
+			stateChecker: func(s Store, c JobNotifier, listener CheckNotifier, t *testing.T) {
 				store := s.(*inMemoryStore)
-				jobsStore := c.(*inMemJobsSender)
+				jobsStore := c.(*inMemJobsNotifier)
 				// Copy the test scan.
 				wantScan := scan4
 				wantScan.ChecksCreated = intToPtr(3)
@@ -404,7 +402,7 @@ func TestChecksRunner_CreateScanChecks(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &ChecksRunner{
 				store:          tt.fields.store,
-				sender:         tt.fields.sender,
+				notifier:       tt.fields.notifier,
 				checksListener: tt.fields.listener,
 				l:              tt.fields.l,
 				ctinformer:     tt.fields.pclient,
@@ -413,7 +411,7 @@ func TestChecksRunner_CreateScanChecks(t *testing.T) {
 				t.Errorf("ChecksCreator.CreateScanChecks() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			tt.stateChecker(c.store, c.sender, c.checksListener, t)
+			tt.stateChecker(c.store, c.notifier, c.checksListener, t)
 		})
 	}
 }

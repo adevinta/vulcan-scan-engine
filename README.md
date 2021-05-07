@@ -68,14 +68,11 @@ Those are the variables you have to use:
 |CHECKS_SQS_INTERVAL||10|
 |CHECKS_SQS_WAIT||20|
 |CHECKS_SQS_TIMEOUT||30|
-|SCANS_SNS_ARN|ARN for the scans notification topic|arn:aws:sns:xxx:123456789012:yyy|
+|EVENTS_SNS_ARN|ARN for the event notification topic|arn:aws:sns:xxx:123456789012:yyy|
 |CHECKS_SNS_ARN|ARN for the checks status notification topic|arn:aws:sns:xxx:123456789012:yyy|
 |AWS_SNS_ENDPOINT|Endpoint for SNS topic (optional)|http://custom-aws-endpoint|
 |CHECKS_CREATOR_WORKERS|Number of workers to run for checks creation||
 |CHECKS_CREATOR_PERIOD|Period (seconds) for which workers should look for checks pending to be created||
-|QUEUES_DEFAULT_ARN|Default checks queue ARN|arn:aws:sqs:xxx:123456789012:yyy|
-|QUEUES_NESSUS_ARN|Nessus checks ARN|arn:aws:sqs:xxx:123456789012:yyy|
-|QUEUES_NESSUS_CHECKTYPES|List of checks to create in nessus queue|["vulcan-nessus"]|
 
 ```bash
 docker build . -t vse

@@ -344,7 +344,7 @@ func TestPersistence_AddCheckAsFinished(t *testing.T) {
 				Target:      "localhost",
 				Options:     util.Str2Ptr("{\"sleep_time\":6}"),
 				Progress:    testutil.FloatPointer(0.0),
-				QueueName:   util.Str2Ptr("aa"),
+				TargetQueue: util.Str2Ptr("aa"),
 				ChecktypeID: util.Str2Ptr("537473c5-f309-488f-a100-f524d4a739c9"),
 				CheckAdded:  util.Bool2Ptr(true),
 			},
@@ -730,7 +730,7 @@ func TestPersistence_GetScanChecks(t *testing.T) {
 			}
 
 			diff := cmp.Diff(tt.want, got, cmpopts.IgnoreFields(api.Check{},
-				"Options", "ScanID", "WebHook", "Progress", "QueueName", "ChecktypeID", "Data", "CreatedAt", "UpdatedAt",
+				"Options", "ScanID", "WebHook", "Progress", "TargetQueue", "ChecktypeID", "Data", "CreatedAt", "UpdatedAt",
 			))
 			if diff != "" {
 				t.Errorf("want checks != got checks. Diff: %s\n", diff)
