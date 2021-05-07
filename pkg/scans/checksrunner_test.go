@@ -141,7 +141,7 @@ var (
 				ChecktypesGroup: api.ChecktypesGroup{
 					Name: "CTG2",
 					Checktypes: []api.Checktype{
-						{Name: "vulcan-nmap"},
+						{Name: "vulcan-docker"},
 					},
 				},
 			},
@@ -195,8 +195,8 @@ var (
 			Progress:      floatToPtr(0),
 			ScanIndex:     strToPtr("1_0"),
 			ChecktypeID:   strToPtr("8f8727fe-55bc-11eb-ae93-0242ac130002"),
-			ChecktypeName: strToPtr("vulcan-nmap"),
-			Image:         strToPtr("example.com/vulcan-checks/vulcan-nmap:1"),
+			ChecktypeName: strToPtr("vulcan-docker"),
+			Image:         strToPtr("example.com/vulcan-checks/vulcan-docker:1"),
 			Options:       strToPtr("{}"),
 			QueueName:     strToPtr(""),
 			Tag:           strToPtr("uuid:teamScan4"),
@@ -245,7 +245,7 @@ var (
 			Job: Job{
 				CheckID:      "c8d7e69e-5a74-11eb-8b36-acde48001122",
 				ScanID:       "48fc7d46-53fc-11eb-ae93-0242ac130002",
-				Image:        "example.com/vulcan-checks/vulcan-nmap:1",
+				Image:        "example.com/vulcan-checks/vulcan-docker:1",
 				Target:       "192.168.0.1",
 				Timeout:      100,
 				AssetType:    "IP",
@@ -253,7 +253,7 @@ var (
 				RequiredVars: []string{},
 				Metadata:     map[string]string{"program": "scan4Program", "team": "teamscan4"},
 			},
-			ChecktypeName: "vulcan-nmap",
+			ChecktypeName: "vulcan-docker",
 		},
 	}
 )
