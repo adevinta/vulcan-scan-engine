@@ -336,6 +336,7 @@ func TestPersistence_AddCheckAsFinished(t *testing.T) {
 				CheckCount:     testutil.IntPointer(2),
 				ChecksCreated:  testutil.IntPointer(1),
 				ChecksFinished: testutil.IntPointer(2),
+				TargetQueue:    util.Str2Ptr("customer:queue:01"),
 			},
 			wantCheck: &api.Check{
 				ID:          fixtureScans["Scan1"].Checks["Check1"],
@@ -344,7 +345,7 @@ func TestPersistence_AddCheckAsFinished(t *testing.T) {
 				Target:      "localhost",
 				Options:     util.Str2Ptr("{\"sleep_time\":6}"),
 				Progress:    testutil.FloatPointer(0.0),
-				TargetQueue: util.Str2Ptr("aa"),
+				TargetQueue: util.Str2Ptr("customer:queue:01"),
 				ChecktypeID: util.Str2Ptr("537473c5-f309-488f-a100-f524d4a739c9"),
 				CheckAdded:  util.Bool2Ptr(true),
 			},
@@ -448,6 +449,7 @@ func TestPersistence_GetScans(t *testing.T) {
 					Status:         &runningState,
 					ChecksFinished: util.Int2Ptr(1),
 					Progress:       testutil.FloatPointer(0.5),
+					TargetQueue:    util.Str2Ptr("customer:queue:01"),
 				},
 				{
 					ID:             UUIDFromString("a3b5af18-4e1d-11e8-9c2d-fa7ae01bbebc"),
@@ -501,6 +503,7 @@ func TestPersistence_GetScans(t *testing.T) {
 					ChecksFinished: util.Int2Ptr(1),
 					Status:         &runningState,
 					Progress:       testutil.FloatPointer(0.5),
+					TargetQueue:    util.Str2Ptr("customer:queue:01"),
 				},
 				{
 					ID:             UUIDFromString("a3b5af18-4e1d-11e8-9c2d-fa7ae01bbebc"),
