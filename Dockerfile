@@ -13,7 +13,7 @@ COPY . .
 
 RUN cd cmd/vulcan-scan-engine/ && GOOS=linux GOARCH=amd64 go build . && cd -
 
-FROM alpine:3.10
+FROM alpine:3.13
 
 WORKDIR /flyway
 

@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	errNoInitChecksFinishedStr = `pq: null value in column "data" violates not-null constraint`
+	errNoInitChecksFinishedStr = `pq: null value in column "data" of relation "scans" violates not-null constraint`
 )
 
 var (
