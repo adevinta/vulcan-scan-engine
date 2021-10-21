@@ -9,7 +9,6 @@ go:
 services:
   - docker
 before_script:
-  - docker pull flyway/flyway:$FLYWAY_VERSION
   - export GOROOT=$(go env GOROOT)
   - db/postgres-start.sh
 go_import_path: github.com/adevinta/vulcan-scan-engine
