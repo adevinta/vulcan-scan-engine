@@ -1,4 +1,5 @@
 # vulcan-scan-engine
+
 Component that allows to run, monitor and query the status of a scan.
 
 The the component exposes endpoints:
@@ -13,7 +14,7 @@ The the component exposes endpoints:
     See [swagger spec](https://github.com/adevinta/vulcan-scan-engine/blob/master/specs/scan-engine.swagger.yml).
 
 3. [GET] /v1/scans?external_id={id}&offset={offset}&limit={limit}
-    
+
     Gets the list of scans ordered by descending creation time.
     External ID param is optional, if set lists only the scans for that external ID.
     Offset and limit parameters are optional, if not set, all results are returned.
@@ -41,11 +42,12 @@ The the component exposes endpoints:
 
 For running the component locally, clone and run at the root of the repo the following:
 
-```
+```sh
 go install ./...
 source db/postgres-start.sh
 vulcan-scan-engine -c ../_resources/config/local.toml
 ```
+
 # Docker execute
 
 Those are the variables you have to use:

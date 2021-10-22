@@ -106,7 +106,7 @@ func RunFlywayCmd(conn, migrationsDir, flywayCommand string) error {
 		"--net=host",
 		"-v",
 		migrationsDir + ":/flyway/sql",
-		"flyway/flyway:" + flywayVersion,
+		"flyway/flyway:" + flywayVersion + "-alpine",
 		"-user=" + c.User,
 		"-password=" + c.Password,
 		"-url=jdbc:" + addr,

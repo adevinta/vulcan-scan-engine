@@ -12,16 +12,16 @@ export CHECKS_SQS_TIMEOUT=${CHECKS_SQS_TIMEOUT:-30}
 
 
 # Apply env variables
-cat config.toml | envsubst > run.toml
+envsubst < config.toml > run.toml
 
-if [ ! -z "$PG_CA_B64" ]; then
+if [ -n "$PG_CA_B64" ]; then
   mkdir /root/.postgresql
   echo $PG_CA_B64 | base64 -d > /root/.postgresql/root.crt   # for flyway
   echo $PG_CA_B64 | base64 -d > /etc/ssl/certs/pg.crt  # for vulcan-api
 fi
 
-flyway -user=$PG_USER -password=$PG_PASSWORD \
-  -url=jdbc:postgresql://$PG_HOST:$PG_PORT/$PG_NAME?sslmode=$PG_SSLMODE \
-  -baselineOnMigrate=true -locations=filesystem:/app/sql migrate
+flyway -user="$PG_USER" -password="$PG_PASSWORD" \
+  -url="jdbc:postgresql://$PG_HOST:$PG_PORT/$PG_NAME?sslmode=$PG_SSLMODE" \
+  -community -baselineOnMigrate=true -locations=filesystem:/app/sql migrate
 
-./vulcan-scan-engine -c run.toml
+exec ./vulcan-scan-engine -c run.toml
