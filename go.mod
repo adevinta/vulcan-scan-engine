@@ -22,6 +22,7 @@ require (
 )
 
 require (
+	github.com/BurntSushi/toml v0.4.1 // indirect
 	github.com/DataDog/datadog-go v3.7.1+incompatible // indirect
 	github.com/armon/go-metrics v0.3.0 // indirect
 	github.com/dimfeld/httptreemux v5.0.1+incompatible // indirect
