@@ -59,6 +59,6 @@ period =  $CHECKS_CREATOR_PERIOD
     # arn = "$QUEUES_1_ARN"
     # checktypes = $QUEUES_1_CHECKTYPES
 
-    # [queues.q1]
+    # [queues.q2]
     # arn = "$QUEUES_2_ARN"
     # checktypes = $QUEUES_2_CHECKTYPES
