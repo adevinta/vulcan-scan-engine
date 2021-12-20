@@ -94,11 +94,18 @@ type MultiSQSProducer struct {
 func NewMultiSQSProducer(queues map[string]string, endpoint string, log log.Logger) (*MultiSQSProducer, error) {
 	var m = make(map[string]*SQSProducer)
 	for n, a := range queues {
+		if a == "" {
+			_ = level.Warn(log).Log("ARNNotProvidedForQueue", n)
+			continue
+		}
 		producer, err := NewSQSProducer(a, endpoint, log)
 		if err != nil {
 			return nil, err
 		}
 		m[n] = producer
+	}
+	if len(m) < 1 {
+		return nil, errors.New("no queues provided. Review queues config file section")
 	}
 	return &MultiSQSProducer{m}, nil
 }

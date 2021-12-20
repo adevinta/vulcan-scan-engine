@@ -53,6 +53,18 @@ period =  $CHECKS_CREATOR_PERIOD
     arn = "$QUEUES_NESSUS_ARN"
     checktypes = $QUEUES_NESSUS_CHECKTYPES
 
-    [queues.burp]
-    arn = "$QUEUES_BURP_ARN"
-    checktypes = $QUEUES_BURP_CHECKTYPES
+    [queues.1]
+    arn = "$QUEUES_ARN_1"
+    checktypes = $QUEUES_CHECKTYPES_1
+
+    [queues.2]
+    arn = "$QUEUES_ARN_2"
+    checktypes = $QUEUES_CHECKTYPES_2
+
+    [queues.3]
+    arn = "$QUEUES_ARN_3"
+    checktypes = $QUEUES_CHECKTYPES_3
+
+    [queues.4]
+    arn = "$QUEUES_ARN_4"
+    checktypes = $QUEUES_CHECKTYPES_4
