@@ -56,7 +56,9 @@ type checktypeQueueConfig map[string]checktypeQueues
 func (c checktypeQueueConfig) ARNs() map[string]string {
 	var qarns = make(map[string]string)
 	for qType, q := range c {
-		qarns[qType] = q.ARN
+		if q.ARN != "" {
+			qarns[qType] = q.ARN
+		}
 	}
 	return qarns
 }

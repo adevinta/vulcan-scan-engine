@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Copyright 2021 Adevinta
 
@@ -10,9 +10,26 @@ export CHECKS_SQS_INTERVAL=${CHECKS_SQS_INTERVAL:-10}
 export CHECKS_SQS_WAIT=${CHECKS_SQS_WAIT:-20}
 export CHECKS_SQS_TIMEOUT=${CHECKS_SQS_TIMEOUT:-30}
 
+# Nessus section  will be deprecated, 
+# We add this for compatibility using the new dynamic method.
+export QUEUES_NESSUS_CHECKTYPES=${QUEUES_NESSUS_CHECKTYPES:-'[]'}
 
 # Apply env variables
 envsubst < config.toml > run.toml
+
+# Add dynamic queue configs
+i=1 VARN="QUEUES_${i}_ARN"
+while [ -n "${!VARN}" ]
+do
+  VCT="QUEUES_${i}_CHECKTYPES"
+  echo "
+    [queues.q$i]
+    arn = \"${!VARN}\"
+    checktypes = ${!VCT}
+" >> run.toml
+  i=$((i+1))
+  VARN="QUEUES_${i}_ARN" VCT="QUEUES_${i}_CHECKTYPES"
+done
 
 if [ -n "$PG_CA_B64" ]; then
   mkdir /root/.postgresql

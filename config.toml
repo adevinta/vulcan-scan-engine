@@ -49,6 +49,16 @@ period =  $CHECKS_CREATOR_PERIOD
     [queues.default]
     arn = "$QUEUES_DEFAULT_ARN"
 
+    # This will be depracted in favor of a more dynamic way (see below)
     [queues.nessus]
     arn = "$QUEUES_NESSUS_ARN"
     checktypes = $QUEUES_NESSUS_CHECKTYPES
+
+    # This will be populated by run.sh with a dynamic list of queues based on env variables
+    # [queues.q1]
+    # arn = "$QUEUES_1_ARN"
+    # checktypes = $QUEUES_1_CHECKTYPES
+
+    # [queues.q2]
+    # arn = "$QUEUES_2_ARN"
+    # checktypes = $QUEUES_2_CHECKTYPES

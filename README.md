@@ -76,8 +76,12 @@ Those are the variables you have to use:
 |CHECKS_CREATOR_WORKERS|Number of workers to run for checks creation||
 |CHECKS_CREATOR_PERIOD|Period (seconds) for which workers should look for checks pending to be created||
 |QUEUES_DEFAULT_ARN|Default checks queue ARN|arn:aws:sqs:xxx:123456789012:yyy|
-|QUEUES_NESSUS_ARN|Nessus checks ARN|arn:aws:sqs:xxx:123456789012:yyy|
-|QUEUES_NESSUS_CHECKTYPES|List of checks to create in nessus queue|["vulcan-nessus"]|
+|QUEUES_NESSUS_ARN|Nessus checks ARN *TO BE DEPRECATED*|arn:aws:sqs:xxx:123456789012:yyy|
+|QUEUES_NESSUS_CHECKTYPES|List of checks to create in nessus queue *TO BE DEPRECATED*|["vulcan-nessus"]|
+|QUEUES_1_ARN|checks ARN|arn:aws:sqs:xxx:123456789012:yyy|
+|QUEUES_1_CHECKTYPES|List of checks to create in this queue|["vulcan-checktype1"]|
+|QUEUES_2_ARN|Nessus checks ARN|arn:aws:sqs:xxx:123456789012:yyy|
+|QUEUES_2_CHECKTYPES|List of checks to create in this queue|["vulcan-checktype2","vulcan-checktype3"]|
 
 ```bash
 docker build . -t vse
