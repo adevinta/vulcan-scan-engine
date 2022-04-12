@@ -481,8 +481,7 @@ func buildCheckMetadata(tag, externalID *string) map[string]string {
 	if tag == nil || *tag == "" {
 		return meta
 	}
-	parts := strings.Split(*tag, ":")
-	meta["team"] = strings.ToLower(parts[len(parts)-1])
+	meta["team"] = strings.ToLower(*tag)
 	return meta
 }
 
