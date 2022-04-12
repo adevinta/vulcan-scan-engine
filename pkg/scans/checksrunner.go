@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/go-kit/kit/log/level"
@@ -481,7 +480,7 @@ func buildCheckMetadata(tag, externalID *string) map[string]string {
 	if tag == nil || *tag == "" {
 		return meta
 	}
-	meta["team"] = strings.ToLower(*tag)
+	meta["team"] = *tag
 	return meta
 }
 
