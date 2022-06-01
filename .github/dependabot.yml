@@ -7,3 +7,7 @@ updates:
   open-pull-requests-limit: 10
   allow:
   - dependency-name: "*adevinta*"
+- package-ecosystem: "docker"
+  directory: "/"
+  schedule:
+    interval: "weekly"
