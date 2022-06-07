@@ -3,7 +3,7 @@ module github.com/adevinta/vulcan-scan-engine
 go 1.18
 
 require (
-	github.com/adevinta/errors v0.0.0-20210316150432-f3311a255744
+	github.com/adevinta/errors v1.0.0
 	github.com/adevinta/vulcan-core-cli v1.0.0-rc1
 	github.com/adevinta/vulcan-metrics-client v1.0.0-rc1
 	github.com/aws/aws-sdk-go v1.30.8

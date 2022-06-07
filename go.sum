@@ -51,8 +51,8 @@ github.com/DataDog/datadog-go v4.8.3+incompatible/go.mod h1:LButxg5PwREeZtORoXG3
 github.com/Microsoft/go-winio v0.5.2 h1:a9IhgEQBCUEk6QCdml9CiJGhAws+YwffDHEMp1VMrpA=
 github.com/Microsoft/go-winio v0.5.2/go.mod h1:WpS1mjBmmwHBEWmogvA2mj8546UReBk4v8QkMxJ6pZY=
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=
-github.com/adevinta/errors v0.0.0-20210316150432-f3311a255744 h1:r2Irzn6iXPyeEmBCMdpURByg9cEuKtTFIMMeaDffy2A=
-github.com/adevinta/errors v0.0.0-20210316150432-f3311a255744/go.mod h1:lmCPLZqMjzlzOtjuIFkNwfJzyUGo0Qg0s3stdcLQac8=
+github.com/adevinta/errors v1.0.0 h1:AWSk4/FPscfTUWSV7tw5Gj5+9pjvDLF/+rhv97dSRPU=
+github.com/adevinta/errors v1.0.0/go.mod h1:wzlA5WqVWJnAbHve26Io48+aAvmKLWDPBprJPWeuZNI=
 github.com/adevinta/vulcan-core-cli v1.0.0-rc1 h1:PSHKW32yQAuhqqr9U6fe5b3WGflDhXrNxJJtRc5OFRE=
 github.com/adevinta/vulcan-core-cli v1.0.0-rc1/go.mod h1:76ojhKlC2ySWukWD46YnCNPR/3R2TOjrfkSUgZQIfcM=
 github.com/adevinta/vulcan-metrics-client v1.0.0-rc1 h1:mcKUC5K2FTneeboBk96VXYNZFZNdCP1bQGpEUtbglP0=
