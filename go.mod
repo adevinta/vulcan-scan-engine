@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/adevinta/errors v1.0.0
-	github.com/adevinta/vulcan-core-cli v1.0.0-rc1
+	github.com/adevinta/vulcan-core-cli v1.0.0
 	github.com/adevinta/vulcan-metrics-client v1.0.0
 	github.com/aws/aws-sdk-go v1.30.8
 	github.com/go-kit/kit v0.9.0

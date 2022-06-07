@@ -53,8 +53,8 @@ github.com/Microsoft/go-winio v0.5.2/go.mod h1:WpS1mjBmmwHBEWmogvA2mj8546UReBk4v
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=
 github.com/adevinta/errors v1.0.0 h1:AWSk4/FPscfTUWSV7tw5Gj5+9pjvDLF/+rhv97dSRPU=
 github.com/adevinta/errors v1.0.0/go.mod h1:wzlA5WqVWJnAbHve26Io48+aAvmKLWDPBprJPWeuZNI=
-github.com/adevinta/vulcan-core-cli v1.0.0-rc1 h1:PSHKW32yQAuhqqr9U6fe5b3WGflDhXrNxJJtRc5OFRE=
-github.com/adevinta/vulcan-core-cli v1.0.0-rc1/go.mod h1:76ojhKlC2ySWukWD46YnCNPR/3R2TOjrfkSUgZQIfcM=
+github.com/adevinta/vulcan-core-cli v1.0.0 h1:xxewz39J8EHvyguPPpXZ/30SS+wMVVaBz8n6TzcUwVM=
+github.com/adevinta/vulcan-core-cli v1.0.0/go.mod h1:DBiZc/kZ4dKAjWQV5RZ5QVtkKRce81sKwy6XbFj/s7U=
 github.com/adevinta/vulcan-metrics-client v1.0.0 h1:gkWoyVESQxG+Ms/DdvDPttu96iehLtR49X+ydyvg8MU=
 github.com/adevinta/vulcan-metrics-client v1.0.0/go.mod h1:v1lRugB/hInlu+2FC6Q7nXROve9CVAe1K3oza2tYBcQ=
 github.com/antihax/optional v1.0.0/go.mod h1:uupD/76wgC+ih3iEmQUL+0Ugr19nfwCT1kdvxnR2qWY=
