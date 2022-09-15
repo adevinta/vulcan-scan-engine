@@ -6,7 +6,7 @@ require (
 	github.com/adevinta/errors v1.0.0
 	github.com/adevinta/vulcan-core-cli v1.0.0
 	github.com/adevinta/vulcan-metrics-client v1.0.0
-	github.com/aws/aws-sdk-go v1.30.8
+	github.com/aws/aws-sdk-go v1.44.98
 	github.com/go-kit/kit v0.9.0
 	github.com/goadesign/goa v1.4.3
 	github.com/google/go-cmp v0.5.6
@@ -37,7 +37,7 @@ require (
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/hpcloud/tail v1.0.0 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
-	github.com/jmespath/go-jmespath v0.3.0 // indirect
+	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/leodido/go-urn v1.2.0 // indirect
 	github.com/magiconair/properties v1.8.5 // indirect
 	github.com/mattn/go-oci8 v0.0.0-20191108001511-cbd8d5bc1da0 // indirect
@@ -50,7 +50,7 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/subosito/gotenv v1.2.0 // indirect
 	golang.org/x/net v0.0.0-20220909164309-bea034e7d591 // indirect
-	golang.org/x/sys v0.0.0-20220728004956-3c1f35247d10 // indirect
+	golang.org/x/sys v0.0.0-20220913175220-63ea55921009 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	gopkg.in/fsnotify.v1 v1.4.7 // indirect
