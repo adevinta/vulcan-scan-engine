@@ -111,6 +111,7 @@ func RunFlywayCmd(conn, migrationsDir, flywayCommand string) error {
 		"-password=" + c.Password,
 		"-url=jdbc:" + addr,
 		"-baselineOnMigrate=true",
+		"-cleanDisabled=false",
 		flywayCommand}
 
 	cmd := exec.Command(cmdName, cmdArgs...)
