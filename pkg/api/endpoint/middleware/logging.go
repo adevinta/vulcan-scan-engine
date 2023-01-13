@@ -27,7 +27,7 @@ func Logging(logger log.Logger) endpoint.Middleware {
 		return func(ctx context.Context, request interface{}) (response interface{}, err error) {
 			begin := time.Now()
 			response, err = next(ctx, request)
-			_ = level.Debug(logger).Log("request", toStr(request), "response", toStr(response), "transport_error", err, "took", time.Since(begin))
+			_ = level.Debug(logger).Log("Request", toStr(request), "Response", toStr(response), "TransportError", err, "Took", time.Since(begin))
 			return response, err
 		}
 	}
