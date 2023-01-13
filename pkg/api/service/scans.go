@@ -237,7 +237,17 @@ func (s ScansService) CreateScan(ctx context.Context, scan *api.Scan) (uuid.UUID
 
 	// Push metrics.
 	s.pushScanMetrics(metricsScanCreated, util.Ptr2Str(scan.Tag), util.Ptr2Str(scan.ExternalID), stats)
-	_ = level.Warn(s.logger).Log("ScanCreated", id)
+	time2Create := time.Since(*scan.StartTime)
+	externalID := ""
+	if scan.ExternalID != nil {
+		externalID = *scan.ExternalID
+	}
+	tag := ""
+	if scan.Tag != nil {
+		tag = *scan.Tag
+	}
+	_ = level.Info(s.logger).Log("ScanCreated", id, "CreationTime", time2Create.String(), "ExternalID",
+		externalID, "Tag", tag)
 	go func() {
 		err := s.ccreator.CreateScanChecks(id.String())
 		if err != nil {
@@ -252,7 +262,7 @@ func (s ScansService) getScanStats(ctx context.Context, checktypesInfo Checktype
 		NumberOfChecksPerChecktype: map[string]int{},
 	}
 	if scan.TargetGroups == nil {
-		// If this field is nil it means this scan is using a versión of the
+		// If this field is nil it means this scan is using a version of the
 		// create scan request that does not support metrics any more, just
 		// return empty stats.
 		return scanStats{}, nil
