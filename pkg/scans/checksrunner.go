@@ -293,8 +293,10 @@ func (c *ChecksRunner) CreateScanChecks(id string) error {
 		}
 		last := tGroupIndex
 		lastCheck := -1
+		created := checksCreated
 		updateScan := api.Scan{
 			ID:                      scan.ID,
+			ChecksCreated:           &created,
 			LastCheckCreated:        &lastCheck,
 			LastTargetCheckGCreated: &last,
 			TargetGroups:            &[]api.TargetsChecktypesGroup{}, // Remove creation process data
