@@ -193,7 +193,9 @@ func (c *ChecksRunner) CreateScanChecks(id string) error {
 	if scan.ChecksCreated != nil {
 		checksCreated = *scan.ChecksCreated
 	}
-	level.Debug(c.l).Log("CreatingChecks", len(*scan.TargetGroups))
+
+	level.Info(c.l).Log("Scan", id, "LastCheckCreated", currentCheckG, "ChecksCreated", checksCreated)
+	level.Debug(c.l).Log("Scan", id, "CreatingChecks", len(*scan.TargetGroups))
 
 	checkpointCount := 0
 	start := time.Now()
@@ -228,11 +230,12 @@ func (c *ChecksRunner) CreateScanChecks(id string) error {
 				if err != nil {
 					return err
 				}
-				// We ensure the check has te correct id here (see the comment above).
+				// We ensure the check has the correct id here (see the comment above).
 				if check.ID != id {
+					level.Warn(c.l).Log("ExistingCheck", index, "Check", id, "Scan", check.ScanID)
 					check.ID = id
 				} else {
-					// We only publish a change when if a check has been created.
+					// We only publish a change when a check has been created.
 					c.checksListener.CheckUpdated(check, util.Ptr2Str(scan.ExternalID))
 				}
 
@@ -297,7 +300,7 @@ func (c *ChecksRunner) CreateScanChecks(id string) error {
 			TargetGroups:            &[]api.TargetsChecktypesGroup{}, // Remove creation process data
 		}
 
-		level.Info(c.l).Log("Scan created", "Scan", scan.ID, "Count", checkpointCount, "Seconds", time.Since(start))
+		level.Info(c.l).Log("Scan", scan.ID, "GeneratedChecks", checkpointCount, "Seconds", time.Since(start).Seconds())
 		_, err = c.store.UpdateScan(scan.ID, updateScan, []string{service.ScanStatusRunning})
 		if err != nil {
 			return err
