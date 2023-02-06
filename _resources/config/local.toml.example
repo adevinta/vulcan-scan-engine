@@ -31,3 +31,4 @@ enabled = true
 num_of_workers = 1
 # in seconds.
 period = 60
+checkpoint = 100

@@ -79,18 +79,20 @@ type ChecksRunner struct {
 	l              Logger
 	checksListener CheckNotifier
 	ctinformer     ChecktypeInformer
+	checkpoint     int
 }
 
 // NewJobsCreator creates and returns a new JobsCreator given its
 // dependencies.
 func NewJobsCreator(store Store,
-	sender JobSender, ctinformer ChecktypeInformer, checkListener CheckNotifier, l Logger) *ChecksRunner {
+	sender JobSender, ctinformer ChecktypeInformer, checkListener CheckNotifier, checkpoint int, l Logger) *ChecksRunner {
 	return &ChecksRunner{
 		store:          store,
 		sender:         sender,
 		l:              l,
 		ctinformer:     ctinformer,
 		checksListener: checkListener,
+		checkpoint:     checkpoint,
 	}
 }
 
@@ -192,6 +194,10 @@ func (c *ChecksRunner) CreateScanChecks(id string) error {
 		checksCreated = *scan.ChecksCreated
 	}
 	level.Debug(c.l).Log("CreatingChecks", len(*scan.TargetGroups))
+
+	checkpointCount := 0
+	start := time.Now()
+
 	for tGroupIndex := currentTargetG; tGroupIndex < len(*scan.TargetGroups); tGroupIndex++ {
 		tgroups := *scan.TargetGroups
 		tg := tgroups[tGroupIndex]
@@ -246,23 +252,31 @@ func (c *ChecksRunner) CreateScanChecks(id string) error {
 				// Update the last create check of the scan in the DB.
 				scan.LastCheckCreated = &checkGroupIndex
 				checksCreated++
-				created := checksCreated
-				updateScan := api.Scan{
-					ID:               scan.ID,
-					ChecksCreated:    &created,
-					LastCheckCreated: &checkGroupIndex,
+
+				// Update the scan every Checkpoint check inserts
+				// Always executes for the first time to validating the scanTerminated.
+				if c.checkpoint == 0 || checkpointCount%c.checkpoint == 0 {
+					level.Info(c.l).Log("Checkpointing", index, "Scan", check.ScanID, "Count", checkpointCount)
+					created := checksCreated
+					updateScan := api.Scan{
+						ID:               scan.ID,
+						ChecksCreated:    &created,
+						LastCheckCreated: &checkGroupIndex,
+					}
+					count, err := c.store.UpdateScan(scan.ID, updateScan, []string{service.ScanStatusRunning})
+					if err != nil {
+						return err
+					}
+					// If the scan has not been updated it's because is not RUNNING, for
+					// instance because it has been aborted. In that case we stop
+					// creating checks.
+					if count == 0 {
+						return errScanTerminated
+					}
 				}
-				count, err := c.store.UpdateScan(scan.ID, updateScan, []string{service.ScanStatusRunning})
-				if err != nil {
-					return err
-				}
+				checkpointCount++
+
 				checkGroupIndex++
-				// If the scan has not been updated it's because is not RUNNING, for
-				// instance because it has been aborted. In that case we stop
-				// creating checks.
-				if count == 0 {
-					return errScanTerminated
-				}
 
 				return nil
 			})
@@ -282,6 +296,8 @@ func (c *ChecksRunner) CreateScanChecks(id string) error {
 			LastTargetCheckGCreated: &last,
 			TargetGroups:            &[]api.TargetsChecktypesGroup{}, // Remove creation process data
 		}
+
+		level.Info(c.l).Log("Scan created", "Scan", scan.ID, "Count", checkpointCount, "Seconds", time.Since(start))
 		_, err = c.store.UpdateScan(scan.ID, updateScan, []string{service.ScanStatusRunning})
 		if err != nil {
 			return err

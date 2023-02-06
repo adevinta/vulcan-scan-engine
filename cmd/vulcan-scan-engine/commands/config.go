@@ -42,7 +42,8 @@ type streamConfig struct {
 
 type checkCreatorConfig struct {
 	NumOfWorkers int `mapstructure:"num_of_workers"`
-	Period       int `mapstructure:"period"` // seconds
+	Period       int `mapstructure:"period"`     // seconds
+	Checkpoint   int `mapstructure:"checkpoint"` // update scan every checks
 }
 
 type checktypeQueues struct {
