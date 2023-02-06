@@ -13,7 +13,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/go-kit/kit/log/level"
+	"github.com/go-kit/log/level"
 	uuid "github.com/satori/go.uuid"
 
 	"github.com/adevinta/vulcan-core-cli/vulcan-core/client"
@@ -49,15 +49,6 @@ type ChecktypesByAssettypes map[string]map[string]struct{}
 type ChecktypeInformer interface {
 	IndexChecktypes(ctx context.Context, path string, enabled *string, name *string) (*http.Response, error)
 	DecodeChecktype(resp *http.Response) (*client.Checktype, error)
-}
-
-type checkData struct {
-	ChecktypeName string
-	Options       string
-	Target        string
-	Tag           string
-	AssetType     string
-	Metadata      map[string]string
 }
 
 // Store defines the methods required by the check creator to query and update
@@ -434,6 +425,9 @@ func (c *ChecksRunner) createChecksForGroup(scan api.Scan, group api.TargetsChec
 				continue
 			}
 			check, err := c.createCheck(scan, group, t, ct)
+			if err != nil {
+				return err
+			}
 			err = checkCreated(check)
 			if err != nil {
 				return err
