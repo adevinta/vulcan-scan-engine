@@ -75,6 +75,7 @@ Those are the variables you have to use:
 |AWS_SNS_ENDPOINT|Endpoint for SNS topic (optional)|http://custom-aws-endpoint|
 |CHECKS_CREATOR_WORKERS|Number of workers to run for checks creation||
 |CHECKS_CREATOR_PERIOD|Period (seconds) for which workers should look for checks pending to be created||
+|CHECKS_CREATOR_CHECKPOINT|Number of checks created before saving the state in the scan|100|
 |QUEUES_DEFAULT_ARN|Default checks queue ARN|arn:aws:sqs:xxx:123456789012:yyy|
 |QUEUES_NESSUS_ARN|Nessus checks ARN *TO BE DEPRECATED*|arn:aws:sqs:xxx:123456789012:yyy|
 |QUEUES_NESSUS_CHECKTYPES|List of checks to create in nessus queue *TO BE DEPRECATED*|["vulcan-nessus"]|

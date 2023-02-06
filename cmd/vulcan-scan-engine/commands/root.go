@@ -174,7 +174,7 @@ func startServer() error {
 	if err != nil {
 		return err
 	}
-	creator = scans.NewJobsCreator(st, jobsSender, apiClient, checkMetrics, logger)
+	creator = scans.NewJobsCreator(st, jobsSender, apiClient, checkMetrics, cfg.ChecksCreator.Checkpoint, logger)
 	// Try to create possible pending scan checks without having to wait
 	// until the next scheduled task runs.
 	go func() {
