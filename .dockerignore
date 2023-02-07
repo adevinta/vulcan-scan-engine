@@ -3,3 +3,4 @@ Dockerfile
 .dockerignore
 *.md
 _*
+stress

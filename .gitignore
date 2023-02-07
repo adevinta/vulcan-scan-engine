@@ -5,7 +5,6 @@ vendor/
 local.toml
 local.queues.yaml
 run.toml
-
+k6
 # Linux binary used in Dockerfile
 cmd/vulcan-scan-engine/vulcan-scan-engine
-
