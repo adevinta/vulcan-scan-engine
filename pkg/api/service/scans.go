@@ -250,12 +250,6 @@ func (s ScansService) CreateScan(ctx context.Context, scan *api.Scan) (uuid.UUID
 	}
 	_ = level.Info(s.logger).Log("ScanCreated", id, "CreationTime", time2Create.String(), "ExternalID",
 		externalID, "Tag", tag)
-	go func() {
-		err := s.ccreator.CreateScanChecks(id.String())
-		if err != nil {
-			_ = level.Error(s.logger).Log("ErrorCreatingChecks", err)
-		}
-	}()
 	return id, nil
 }
 

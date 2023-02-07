@@ -399,11 +399,6 @@ func TestScansService_CreateScan(t *testing.T) {
 			}
 
 			if tt.wantScan != nil {
-				// If an in memory asynchronous check creator is specified we
-				// read from the channel to be sure it finished.
-				if tt.fields.checksCreator != nil {
-					<-tt.fields.checksCreator.created
-				}
 				val, ok := tt.fields.db.scans.Load(got)
 				if !ok {
 					t.Error("Expected scan not stored in db.")
