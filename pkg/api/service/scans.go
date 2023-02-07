@@ -230,6 +230,8 @@ func (s ScansService) CreateScan(ctx context.Context, scan *api.Scan) (uuid.UUID
 	zero := 0
 	scan.ChecksCreated = &zero
 	scan.ChecksFinished = &zero
+	var floatZero float32 = 0.0
+	scan.Progress = &floatZero
 	_, err = s.db.CreateScan(id, *scan)
 	if err != nil {
 		return uuid.Nil, err

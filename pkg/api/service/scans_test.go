@@ -378,6 +378,7 @@ func TestScansService_CreateScan(t *testing.T) {
 				CheckCount:     intToPtr(1),
 				ChecksCreated:  intToPtr(0),
 				ChecksFinished: intToPtr(0),
+				Progress:       floatToPtr(0.0),
 				ChecktypesInfo: map[string]map[string]struct{}{"DomainName": {"vulcan-spf": {}}, "Hostname": {"vulcan-nessus": {}}, "IP": {}},
 			},
 		},

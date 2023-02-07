@@ -72,7 +72,7 @@ func (db Persistence) CreateScan(id uuid.UUID, scan api.Scan) (int64, error) {
 func (db Persistence) UpdateScan(id uuid.UUID, scan api.Scan, updateStates []string) (int64, error) {
 	condition := ""
 	if len(updateStates) > 0 {
-		condition = `NOT(jsonb_exists(scans.data,'status')) OR (scans.data->>'status') IN (`
+		condition = `scans.data->>'status' IN (`
 		marks := []string{}
 		for i := 0; i < len(updateStates); i++ {
 			marks = append(marks, "?")
@@ -80,9 +80,8 @@ func (db Persistence) UpdateScan(id uuid.UUID, scan api.Scan, updateStates []str
 		cond := strings.Join(marks, ",")
 		condition = condition + cond + ")"
 	}
-	// TODO: It would be better to not reference the table name 'scans' in the condition.
 	if scan.Progress != nil {
-		pcondition := `( NOT(jsonb_exists(scans.data,'progress')) OR ? >= (scans.data->>'progress')::float )`
+		pcondition := `( ? >= COALESCE(scans.data->>'progress', '0.0')::float )`
 		if condition != "" {
 			condition = pcondition + " AND (" + condition + ")"
 		} else {
@@ -113,15 +112,15 @@ func (db Persistence) AddCheckAsFinished(checkID uuid.UUID) (int64, error) {
     SELECT parent_id as scan_id FROM checks WHERE  checks.id=? AND
     data->'check_added' is NULL
     ),
-   add_check AS (
-   UPDATE scans SET data =  data || ('{"checks_finished": ' || ((data->>'checks_finished')::int + 1) || '}')::jsonb
-   FROM if_check_was_not_added as scan_to_add
-   WHERE scans.id = scan_to_add.scan_id
-   RETURNING scans.id
-   )
-   UPDATE checks SET data = data || '{"check_added":true}', updated_at=?
-   FROM add_check as scan
-   WHERE checks.id=?
+	add_check AS (
+	UPDATE scans SET data =  data || ('{"checks_finished": ' || ((data->>'checks_finished')::int + 1) || '}')::jsonb
+	FROM if_check_was_not_added as scan_to_add
+	WHERE scans.id = scan_to_add.scan_id
+	RETURNING scans.id
+	)
+	UPDATE checks SET data = data || '{"check_added":true}', updated_at=?
+	FROM add_check as scan
+	WHERE checks.id=?
 	`
 	now := time.Now()
 	n, err := db.store.ExecRaw(query, checkID, now, checkID)
@@ -137,7 +136,7 @@ func (db Persistence) UpsertCheck(scanID, id uuid.UUID, check api.Check, updateS
 	condition := ""
 
 	if len(updateStates) > 0 {
-		condition = `NOT(jsonb_exists(checks.data,'status')) OR (checks.data->>'status') IN (`
+		condition = `checks.data->>'status' IN (`
 		marks := []string{}
 		for i := 0; i < len(updateStates); i++ {
 			marks = append(marks, "?")
@@ -147,7 +146,7 @@ func (db Persistence) UpsertCheck(scanID, id uuid.UUID, check api.Check, updateS
 	}
 	// TODO: It would be better to not reference the table name 'checks' in the condition.
 	if check.Progress != nil {
-		pcondition := ` (? >= (checks.data->>'progress')::float OR NOT(jsonb_exists(checks.data,'progress')))`
+		pcondition := ` ( ? >= COALESCE(checks.data->>'progress', '0.0')::float )`
 		if condition != "" {
 			condition = pcondition + " AND (" + condition + ")"
 		} else {
@@ -340,7 +339,7 @@ func (db Persistence) GetScanIDForCheck(ID uuid.UUID) (uuid.UUID, error) {
 
 func (db Persistence) GetCreatingScans() ([]string, error) {
 	s := api.Scan{}
-	condition := `(data->'checks_created' is not null AND data->'check_count' <> data->'checks_created' AND  data->>'status' = 'RUNNING')`
+	condition := `(data->'check_count' <> data->'checks_created' AND data->>'status' = 'RUNNING')`
 	return db.store.GetDocIDsWithCondFromDocType(s, condition)
 }
 
