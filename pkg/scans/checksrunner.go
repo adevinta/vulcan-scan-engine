@@ -140,7 +140,7 @@ func (c *ChecksRunner) CreateScanChecks(id string) error {
 		return err
 	}
 
-	if scan.TargetGroups == nil {
+	if scan.TargetGroups == nil || len(*scan.TargetGroups) == 0 {
 		// Scans with no target groups should not be RUNNING.
 		status := service.ScanStatusFinished
 		scan.Status = &status
