@@ -248,8 +248,8 @@ func (s ScansService) CreateScan(ctx context.Context, scan *api.Scan) (uuid.UUID
 	if scan.Tag != nil {
 		tag = *scan.Tag
 	}
-	_ = level.Info(s.logger).Log("ScanCreated", id, "CreationTime", time2Create.String(), "ExternalID",
-		externalID, "Tag", tag)
+	_ = level.Info(s.logger).Log("ScanCreated", id, "CreationTime", time2Create.String(), "CheckCount", scan.CheckCount,
+		"ExternalID", externalID, "Tag", tag)
 	return id, nil
 }
 

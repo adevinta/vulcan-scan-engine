@@ -194,8 +194,8 @@ func (c *ChecksRunner) CreateScanChecks(id string) error {
 		checksCreated = *scan.ChecksCreated
 	}
 
-	level.Info(c.l).Log("Scan", id, "LastCheckCreated", currentCheckG, "ChecksCreated", checksCreated)
-	level.Debug(c.l).Log("Scan", id, "CreatingChecks", len(*scan.TargetGroups))
+	level.Info(c.l).Log("Scan", id, "TargetGroups", len(*scan.TargetGroups), "CheckCount", scan.CheckCount,
+		"StartFrom", fmt.Sprintf("%d_%d", currentTargetG, currentCheckG), "ChecksCreated", checksCreated)
 
 	checkpointCount := 0
 	start := time.Now()
