@@ -16,8 +16,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	goaclient "github.com/goadesign/goa/client"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -32,6 +32,7 @@ import (
 	"github.com/adevinta/vulcan-scan-engine/pkg/api/persistence/migrations"
 	"github.com/adevinta/vulcan-scan-engine/pkg/api/service"
 	"github.com/adevinta/vulcan-scan-engine/pkg/api/transport"
+	"github.com/adevinta/vulcan-scan-engine/pkg/apiclient"
 	checkmetrics "github.com/adevinta/vulcan-scan-engine/pkg/metrics"
 	"github.com/adevinta/vulcan-scan-engine/pkg/notify"
 	"github.com/adevinta/vulcan-scan-engine/pkg/queue"
@@ -174,7 +175,10 @@ func startServer() error {
 	if err != nil {
 		return err
 	}
-	creator = scans.NewJobsCreator(st, jobsSender, apiClient, checkMetrics, cfg.ChecksCreator.Checkpoint, logger)
+
+	informer := apiclient.NewCachedChecktypeInformer(apiClient, 10*time.Second)
+
+	creator = scans.NewJobsCreator(st, jobsSender, informer, checkMetrics, cfg.ChecksCreator.Checkpoint, logger)
 	// Try to create possible pending scan checks without having to wait
 	// until the next scheduled task runs.
 	go func() {
@@ -191,7 +195,7 @@ func startServer() error {
 		sch.AddTask(t, p)
 	}
 
-	scanService := service.New(logger, st, apiClient, metricsClient, creator, scansNotifier, checksNotifier, streamClient)
+	scanService := service.New(logger, st, informer, metricsClient, creator, scansNotifier, checksNotifier, streamClient)
 
 	healthCheckService := service.HealthcheckService{
 		DB: db,
@@ -235,7 +239,7 @@ func startServer() error {
 		signal.Notify(c, syscall.SIGTERM, syscall.SIGINT)
 		<-c
 		logger.Log("SIGTERM or SIGINT Received")
-		err = errors.New("Received terminate signal")
+		err = errors.New("received terminate signal")
 		errs <- fmt.Errorf("%s", err)
 	}()
 

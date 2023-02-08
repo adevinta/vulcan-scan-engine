@@ -5,11 +5,9 @@ Copyright 2021 Adevinta
 package scans
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
 	"sort"
 	"time"
 
@@ -27,8 +25,7 @@ import (
 const MaxScanAge = 5
 
 var (
-	errChecktypeNotFound = errors.New("checktype no found")
-	errScanTerminated    = errors.New("scan is not RUNNING anymore")
+	errScanTerminated = errors.New("scan is not RUNNING anymore")
 )
 
 // nexCheck function called when the payload of a new check
@@ -47,8 +44,7 @@ type ChecktypesByAssettypes map[string]map[string]struct{}
 // ChecktypeInformer defines the services required by the JobCreator type to be
 // able to query information about checktypes.
 type ChecktypeInformer interface {
-	IndexChecktypes(ctx context.Context, path string, enabled *string, name *string) (*http.Response, error)
-	DecodeChecktype(resp *http.Response) (*client.Checktype, error)
+	GetChecktype(name string) (*client.Checktype, error)
 }
 
 // Store defines the methods required by the check creator to query and update
@@ -327,7 +323,7 @@ func (c *ChecksRunner) createCheck(scan api.Scan, g api.TargetsChecktypesGroup, 
 		t = *scan.Tag
 	}
 
-	ctInfo, err := c.checktypeInfo(ct.Name)
+	ctInfo, err := c.ctinformer.GetChecktype(ct.Name)
 	if err != nil {
 		return api.Check{}, err
 	}
@@ -378,22 +374,6 @@ func (c *ChecksRunner) createCheck(scan api.Scan, g api.TargetsChecktypesGroup, 
 		Data: []byte("{}"),
 	}
 	return check, nil
-}
-
-func (c *ChecksRunner) checktypeInfo(name string) (client.Checktype, error) {
-	enabled := "true"
-	resp, err := c.ctinformer.IndexChecktypes(context.Background(), client.IndexChecktypesPath(), &enabled, &name)
-	if err != nil {
-		return client.Checktype{}, err
-	}
-	ct, err := c.ctinformer.DecodeChecktype(resp)
-	if err != nil {
-		return client.Checktype{}, err
-	}
-	if ct == nil {
-		return client.Checktype{}, errChecktypeNotFound
-	}
-	return *ct, err
 }
 
 // createChecksForGroup creates the jobs, that is the messages for an agent to

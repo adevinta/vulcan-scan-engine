@@ -6,7 +6,6 @@ package service
 
 import (
 	"context"
-	"net/http"
 	"os"
 	"reflect"
 	"sync"
@@ -127,12 +126,8 @@ type inMemoryAssettypeInformer struct {
 	assetypes client.AssettypeCollection
 }
 
-func (i *inMemoryAssettypeInformer) IndexAssettypes(ctx context.Context, path string) (*http.Response, error) {
-	return nil, nil
-}
-
-func (i *inMemoryAssettypeInformer) DecodeAssettypeCollection(resp *http.Response) (client.AssettypeCollection, error) {
-	return i.assetypes, nil
+func (i *inMemoryAssettypeInformer) GetAssettypes() (*client.AssettypeCollection, error) {
+	return &i.assetypes, nil
 }
 
 type inMemoryStore struct {

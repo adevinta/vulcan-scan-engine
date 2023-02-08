@@ -54,8 +54,7 @@ const (
 // ChecktypesInformer represents an informer for the mapping
 // between checktypes and supported asset types.
 type ChecktypesInformer interface {
-	IndexAssettypes(ctx context.Context, path string) (*http.Response, error)
-	DecodeAssettypeCollection(resp *http.Response) (client.AssettypeCollection, error)
+	GetAssettypes() (*client.AssettypeCollection, error)
 }
 
 // ChecksCreator abstracts the actual implementation
@@ -287,16 +286,12 @@ func (s ScansService) getScanStats(ctx context.Context, checktypesInfo Checktype
 }
 
 func (s ScansService) checktypesByAssettype(ctx context.Context) (ChecktypesByAssettypes, error) {
-	resp, err := s.ctInformer.IndexAssettypes(ctx, client.IndexAssettypesPath())
-	if err != nil {
-		return nil, err
-	}
-	assettypes, err := s.ctInformer.DecodeAssettypeCollection(resp)
+	assettypes, err := s.ctInformer.GetAssettypes()
 	if err != nil {
 		return nil, err
 	}
 	ret := ChecktypesByAssettypes{}
-	for _, a := range assettypes {
+	for _, a := range *assettypes {
 		if a.Assettype == nil {
 			continue
 		}

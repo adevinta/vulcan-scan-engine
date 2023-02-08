@@ -5,11 +5,8 @@ Copyright 2021 Adevinta
 package scans
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
-	"io/ioutil"
-	"net/http"
 	"sort"
 	"strings"
 	"sync"
@@ -262,28 +259,7 @@ type inMemChecktypesInformer struct {
 	Checktypes map[string]client.Checktype
 }
 
-func (i inMemChecktypesInformer) IndexChecktypes(ctx context.Context, path string, enabled *string, name *string) (*http.Response, error) {
-	if name == nil {
-		return nil, errors.New("name must be specified")
-	}
-	ct, ok := i.Checktypes[*name]
-	if !ok {
-		return &http.Response{}, nil
-	}
-	r := ioutil.NopCloser(strings.NewReader(ct.Checktype.Name))
-	resp := http.Response{
-		StatusCode: http.StatusFound,
-		Body:       r,
-	}
-	return &resp, nil
-}
-
-func (i inMemChecktypesInformer) DecodeChecktype(resp *http.Response) (*client.Checktype, error) {
-	c, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-	name := string(c)
+func (i inMemChecktypesInformer) GetChecktype(name string) (*client.Checktype, error) {
 	checktype, ok := i.Checktypes[name]
 	if !ok {
 		return nil, nil
