@@ -16,7 +16,7 @@ import (
 	"github.com/adevinta/vulcan-scan-engine/pkg/api"
 	"github.com/adevinta/vulcan-scan-engine/pkg/api/persistence/db"
 	"github.com/adevinta/vulcan-scan-engine/pkg/api/service"
-	"github.com/go-kit/kit/log"
+	"github.com/go-kit/log"
 	uuid2 "github.com/goadesign/goa/uuid"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
