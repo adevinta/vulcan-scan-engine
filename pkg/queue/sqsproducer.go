@@ -26,7 +26,6 @@ var (
 // SQSProducer reads and consumes sqs messages.
 type SQSProducer struct {
 	sqs      sqsiface.SQSAPI
-	logger   log.Logger
 	queueURL string
 }
 

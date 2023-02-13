@@ -39,7 +39,7 @@ var (
 	JobsTrans = cmp.Transformer("Sort", func(in []Job) []Job {
 		out := append([]Job(nil), in...)
 		sort.Slice(out, func(i, j int) bool {
-			less := strings.Compare(*&out[i].Image, *&out[j].Image)
+			less := strings.Compare(out[i].Image, out[j].Image)
 			return less < 0
 
 		})
@@ -217,7 +217,7 @@ var (
 				Timeout:       *checktypes["vulcan-http-headers"].Checktype.Timeout,
 				Options:       *checktypes["vulcan-http-headers"].Checktype.Options,
 				Metadata:      map[string]string{"program": "scan4Program", "team": "5a1346f1"},
-				RequiredVars:  *&checktypes["vulcan-http-headers"].Checktype.RequiredVars,
+				RequiredVars:  checktypes["vulcan-http-headers"].Checktype.RequiredVars,
 			},
 			Queue:         *checktypes["vulcan-http-headers"].Checktype.QueueName,
 			ChecktypeName: "vulcan-http-headers",
@@ -358,9 +358,7 @@ func TestChecksRunner_CreateScanChecks(t *testing.T) {
 				}
 				listenerStore := listener.(*inMemChecksListener)
 				gotChecks = []api.Check{}
-				for _, c := range listenerStore.checks {
-					gotChecks = append(gotChecks, c)
-				}
+				gotChecks = append(gotChecks, listenerStore.checks...)
 				wantChecksUpdated := scan4Checks
 				checksUpdatedDiff := cmp.Diff(wantChecksUpdated, gotChecks, ChecksTrans, cmpopts.IgnoreFields(api.Check{}, "ID", "CreatedAt", "UpdatedAt", "Data"))
 				if checksUpdatedDiff != "" {
@@ -506,14 +504,6 @@ func mustUUIDFromString(id string) uuid.UUID {
 		panic(err)
 	}
 	return u
-}
-
-func mustPtrUUIDFromString(id string) *uuid2.UUID {
-	u, err := uuid2.FromString(id)
-	if err != nil {
-		panic(err)
-	}
-	return &u
 }
 
 func intToPtr(i int) *int {

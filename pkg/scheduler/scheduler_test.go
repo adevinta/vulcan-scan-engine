@@ -16,10 +16,10 @@ import (
 
 var (
 	// ErrInvalidTask indicates that the task specified does not exist.
-	ErrInvalidTask = errors.New("Invalid Task")
+	ErrInvalidTask = errors.New("invalid Task")
 
 	// ErrInvalidOptions indicates that the options specified for a task are not valid.
-	ErrInvalidOptions = errors.New("Invalid Options")
+	ErrInvalidOptions = errors.New("invalid Options")
 )
 
 type logger struct{}
@@ -93,7 +93,6 @@ func (t *mockKoTask) Task() Task {
 // every time it gets executed.
 type mockWriterTask struct {
 	state *taskState
-	i     int
 }
 
 func (t *mockWriterTask) Name() string {

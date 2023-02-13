@@ -118,7 +118,7 @@ func RunFlywayCmd(conn, migrationsDir, flywayCommand string) error {
 	cmd.Env = os.Environ()
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("Error executing flyway command, command output:\n%s.\n Error:\n %s", output, err)
+		return fmt.Errorf("error executing flyway command, command output:\n%s.\n Error:\n %s", output, err)
 	}
 	return nil
 }

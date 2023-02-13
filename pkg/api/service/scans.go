@@ -103,14 +103,10 @@ func New(logger log.Logger, db persistence.ScansStore, client ChecktypesInformer
 
 // ListScans returns the list of scans.
 func (s ScansService) ListScans(ctx context.Context, extID string, offset, limit uint32) ([]api.Scan, error) {
-	var err error
-	scans := []api.Scan{}
 	if extID == "" {
-		scans, err = s.db.GetScans(offset, limit)
-	} else {
-		scans, err = s.db.GetScansByExternalID(extID, offset, limit)
+		return s.db.GetScans(offset, limit)
 	}
-	return scans, err
+	return s.db.GetScansByExternalID(extID, offset, limit)
 }
 
 // GetScan returns the scan corresponding with a given id.
@@ -132,13 +128,10 @@ func (s ScansService) GetScanChecks(ctx context.Context, scanID, status string) 
 	if err != nil {
 		return []api.Check{}, errors.Assertion(fmt.Sprintf("not valid scan ID %s", scanID))
 	}
-	checks := []api.Check{}
 	if status == "" {
-		checks, err = s.db.GetScanChecks(id)
-	} else {
-		checks, err = s.db.GetScanChecksByStatus(id, status)
+		return s.db.GetScanChecks(id)
 	}
-	return checks, err
+	return s.db.GetScanChecksByStatus(id, status)
 }
 
 // GetScanStats returns the check stats for the given scan ID.

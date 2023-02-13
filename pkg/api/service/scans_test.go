@@ -28,31 +28,6 @@ import (
 var (
 	statusRUNNING      = "RUNNING"
 	ErrDocDoesNotExist = errors.NotFound("Document does not exists")
-	assettypes         = client.AssettypeCollection{
-		&client.Assettype{
-			Assettype: nil,
-			Name: []string{
-				"vulcan-no-exec",
-			},
-		},
-		&client.Assettype{
-			Assettype: strToPtr("Hostname"),
-			Name: []string{
-				"vulcan-nessus",
-				"vulcan-aws-trusted-advisor",
-			},
-		},
-		&client.Assettype{
-			Assettype: strToPtr("DomainName"),
-			Name: []string{
-				"vulcan-spf",
-			},
-		},
-		&client.Assettype{
-			Assettype: strToPtr("IP"),
-			Name:      []string{"vulcan-exposed-amt"},
-		},
-	}
 )
 
 type fakeScansPersistence struct {
