@@ -23,7 +23,7 @@ type CachedApiClient struct {
 func NewCachedChecktypeInformer(api *client.Client, expiration time.Duration) CachedApiClient {
 	return CachedApiClient{
 		client: api,
-		cache:  cache.New(cache.DefaultExpiration, cache.DefaultExpiration),
+		cache:  cache.New(expiration, cache.DefaultExpiration),
 	}
 }
 
