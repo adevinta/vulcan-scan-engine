@@ -1,5 +1,7 @@
 # Copyright 2021 Adevinta
 
+ARG ARCH=amd64
+
 FROM golang:1.19.3-alpine3.15 as builder
 
 WORKDIR /app
@@ -11,7 +13,7 @@ RUN go mod download
 
 COPY . .
 
-RUN cd cmd/vulcan-scan-engine/ && GOOS=linux GOARCH=amd64 go build . && cd -
+RUN cd cmd/vulcan-scan-engine/ && GOOS=linux GOARCH=$ARCH go build . && cd -
 
 FROM alpine:3.17.2
 
@@ -19,7 +21,7 @@ WORKDIR /flyway
 
 RUN apk add --no-cache --update openjdk8-jre-base bash gettext
 
-ARG FLYWAY_VERSION=9.4.0
+ARG FLYWAY_VERSION=9.14.1
 
 RUN wget https://repo1.maven.org/maven2/org/flywaydb/flyway-commandline/${FLYWAY_VERSION}/flyway-commandline-${FLYWAY_VERSION}.tar.gz \
     && tar -xzf flyway-commandline-${FLYWAY_VERSION}.tar.gz --strip 1 \
