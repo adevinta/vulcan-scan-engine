@@ -12,6 +12,7 @@ migrations_subdir = ""
 [vulcan]
 schema = "http"
 host = "$PERSISTENCE_HOST"
+cache = "$PERSISTENCE_CACHE"
 
 [sqs]
 disabled = false

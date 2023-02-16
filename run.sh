@@ -10,6 +10,7 @@ export CHECKS_SQS_INTERVAL=${CHECKS_SQS_INTERVAL:-10}
 export CHECKS_SQS_WAIT=${CHECKS_SQS_WAIT:-20}
 export CHECKS_SQS_TIMEOUT=${CHECKS_SQS_TIMEOUT:-30}
 export CHECKS_CREATOR_CHECKPOINT=${CHECKS_CREATOR_CHECKPOINT:-100}
+export PERSISTENCE_CACHE=${PERSISTENCE_CACHE:-120}
 
 # Nessus section  will be deprecated, 
 # We add this for compatibility using the new dynamic method.

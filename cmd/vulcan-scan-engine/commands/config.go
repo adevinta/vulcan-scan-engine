@@ -26,6 +26,7 @@ type dbConfig struct {
 type checktypesInformer struct {
 	Schema string
 	Host   string
+	Cache  int
 }
 
 type logConfig struct {

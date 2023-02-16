@@ -64,6 +64,7 @@ Those are the variables you have to use:
 |PG_SSLMODE|One of these (disable,allow,prefer,require,verify-ca,verify-full)|disable|
 |PG_CA_B64|A base64 encoded ca certificate||
 |PERSISTENCE_HOST||persistence.vulcan.com|
+|PERSISTENCE_CACHE|Cache persistence request for seconds|120|
 |CHECKS_SQS_ARN|ARN for the checks creation queue|arn:aws:sqs:xxx:123456789012:yyy|
 |AWS_SQS_ENDPOINT|Endpoint for SQS creation queue (optional)|http://custom-aws-endpoint|
 |CHECKS_SQS_PROCESSORS|Number of workers processing check updates|8|
