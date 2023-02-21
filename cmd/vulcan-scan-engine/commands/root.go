@@ -176,7 +176,7 @@ func startServer() error {
 		return err
 	}
 
-	informer := apiclient.NewCachedChecktypeInformer(apiClient, time.Second*time.Duration(cfg.Vulcan.Cache))
+	informer := apiclient.NewCachedAPIClient(apiClient, time.Second*time.Duration(cfg.Vulcan.Cache))
 
 	creator = scans.NewJobsCreator(st, jobsSender, informer, checkMetrics, cfg.ChecksCreator.Checkpoint, logger)
 	// Try to create possible pending scan checks without having to wait

@@ -301,11 +301,12 @@ func (cl *inMemChecksListener) CheckUpdated(ch api.Check, programID string) {
 
 func TestChecksRunner_CreateScanChecks(t *testing.T) {
 	type fields struct {
-		store    Store
-		sender   JobSender
-		listener CheckNotifier
-		l        Logger
-		pclient  ChecktypeInformer
+		store      Store
+		sender     JobSender
+		listener   CheckNotifier
+		l          Logger
+		pclient    ChecktypeInformer
+		checkpoint int
 	}
 
 	tests := []struct {
@@ -329,7 +330,8 @@ func TestChecksRunner_CreateScanChecks(t *testing.T) {
 				pclient: inMemChecktypesInformer{
 					Checktypes: checktypes,
 				},
-				sender: &inMemJobsSender{},
+				sender:     &inMemJobsSender{},
+				checkpoint: 2,
 			},
 			id: scan4ID,
 			stateChecker: func(s Store, c JobSender, listener CheckNotifier, t *testing.T) {
@@ -382,6 +384,7 @@ func TestChecksRunner_CreateScanChecks(t *testing.T) {
 				checksListener: tt.fields.listener,
 				l:              tt.fields.l,
 				ctinformer:     tt.fields.pclient,
+				checkpoint:     tt.fields.checkpoint,
 			}
 			if err := c.CreateScanChecks(tt.id); (err != nil) != tt.wantErr {
 				t.Errorf("ChecksCreator.CreateScanChecks() error = %v, wantErr %v", err, tt.wantErr)

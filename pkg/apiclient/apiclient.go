@@ -10,24 +10,27 @@ import (
 	"time"
 
 	"github.com/adevinta/vulcan-core-cli/vulcan-core/client"
-	cache "github.com/patrickmn/go-cache"
+	"github.com/adevinta/vulcan-scan-engine/pkg/util"
 )
 
 var errChecktypeNotFound = errors.New("checktype no found")
 
-type CachedApiClient struct {
-	cache  *cache.Cache
+type CachedAPIClient struct {
+	cache  *util.Cache
 	client *client.Client
 }
 
-func NewCachedChecktypeInformer(api *client.Client, expiration time.Duration) CachedApiClient {
-	return CachedApiClient{
+// NewCachedAPIClient creates a api client that caches the results for indicated expiration.
+func NewCachedAPIClient(api *client.Client, expiration time.Duration) *CachedAPIClient {
+	c := util.NewCache(expiration)
+	return &CachedAPIClient{
 		client: api,
-		cache:  cache.New(expiration, cache.DefaultExpiration),
+		cache:  &c,
 	}
 }
 
-func (s CachedApiClient) GetChecktype(name string) (*client.Checktype, error) {
+// GetChecktype retrieves the checktype with the indicated name
+func (s *CachedAPIClient) GetChecktype(name string) (*client.Checktype, error) {
 	enabled := "true"
 
 	if x, found := s.cache.Get(name); found {
@@ -44,13 +47,14 @@ func (s CachedApiClient) GetChecktype(name string) (*client.Checktype, error) {
 	if ct == nil {
 		return nil, errChecktypeNotFound
 	}
-	s.cache.Set(name, ct, cache.DefaultExpiration)
+	s.cache.Set(name, ct)
 	return ct, err
 }
 
 const assettypeKey = "assettypeskey"
 
-func (s CachedApiClient) GetAssettypes() (*client.AssettypeCollection, error) {
+// GetAssettypes retrieves the list of assettypes with the associated checktypes.
+func (s *CachedAPIClient) GetAssettypes() (*client.AssettypeCollection, error) {
 	if x, found := s.cache.Get(assettypeKey); found {
 		return x.(*client.AssettypeCollection), nil
 	}
@@ -60,6 +64,9 @@ func (s CachedApiClient) GetAssettypes() (*client.AssettypeCollection, error) {
 		return nil, err
 	}
 	assettypes, err := s.client.DecodeAssettypeCollection(resp)
-	s.cache.Set(assettypeKey, &assettypes, cache.DefaultExpiration)
+	if err != nil {
+		return nil, err
+	}
+	s.cache.Set(assettypeKey, &assettypes)
 	return &assettypes, err
 }

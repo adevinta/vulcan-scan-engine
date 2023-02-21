@@ -253,7 +253,7 @@ func (c *ChecksRunner) CreateScanChecks(id string) error {
 				checksCreated++
 
 				// Update the scan every Checkpoint check inserts
-				// Always executes for the first time to validating the scanTerminated.
+				// Always executes for the first time to validate the scanTerminated.
 				if c.checkpoint == 0 || checkpointCount%c.checkpoint == 0 {
 					level.Info(c.l).Log("Checkpointing", index, "Scan", check.ScanID, "Count", checkpointCount)
 					created := checksCreated
