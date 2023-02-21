@@ -193,27 +193,12 @@ func (m *mockStreamClient) AbortChecks(ctx context.Context, checks []string) err
 	return m.abortFunc(ctx, checks)
 }
 
-type inMemAsyncCheckCreator struct {
-	ScanIDs []string
-	created chan struct{}
-}
-
-func (i *inMemAsyncCheckCreator) CreateScanChecks(id string) error {
-	if i.ScanIDs == nil {
-		i.ScanIDs = []string{}
-	}
-	i.ScanIDs = append(i.ScanIDs, id)
-	i.created <- struct{}{}
-	return nil
-}
-
 func TestScansService_CreateScan(t *testing.T) {
 	date := time.Date(2019, time.March, 4, 10, 0, 0, 0, time.UTC)
 	type fields struct {
 		db                 inMemoryStore
 		logger             log.Logger
 		checktypesInformer ChecktypesInformer
-		checksCreator      *inMemAsyncCheckCreator
 		metricsClient      metrics.Client
 	}
 	type args struct {
@@ -234,9 +219,6 @@ func TestScansService_CreateScan(t *testing.T) {
 				db:            newInMemoryStore(new(sync.Map)),
 				logger:        log.NewLogfmtLogger(os.Stdout),
 				metricsClient: &mockMetricsClient{},
-				checksCreator: &inMemAsyncCheckCreator{
-					created: make(chan struct{}, 1),
-				},
 				checktypesInformer: &inMemoryAssettypeInformer{
 					assetypes: client.AssettypeCollection{
 						&client.Assettype{
@@ -358,7 +340,6 @@ func TestScansService_CreateScan(t *testing.T) {
 			s := ScansService{
 				db:            tt.fields.db,
 				logger:        tt.fields.logger,
-				ccreator:      tt.fields.checksCreator,
 				ctInformer:    tt.fields.checktypesInformer,
 				metricsClient: tt.fields.metricsClient,
 			}
