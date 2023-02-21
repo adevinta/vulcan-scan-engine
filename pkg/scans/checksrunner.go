@@ -295,7 +295,8 @@ func (c *ChecksRunner) CreateScanChecks(id string) error {
 			ChecksCreated:           &created,
 			LastCheckCreated:        &lastCheck,
 			LastTargetCheckGCreated: &last,
-			TargetGroups:            &[]api.TargetsChecktypesGroup{}, // Remove creation process data
+			TargetGroups:            &[]api.TargetsChecktypesGroup{},  // Remove creation process data
+			ChecktypesInfo:          map[string]map[string]struct{}{}, // Remove creation process data
 		}
 
 		level.Info(c.l).Log("Scan", scan.ID, "GeneratedChecks", checkpointCount, "Seconds", time.Since(start).Seconds())
