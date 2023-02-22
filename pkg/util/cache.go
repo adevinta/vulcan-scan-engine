@@ -13,7 +13,7 @@ type element struct {
 type Cache struct {
 	data       map[string]element
 	expiration time.Duration
-	mu         sync.Mutex
+	mu         sync.RWMutex
 }
 
 func NewCache(expiration time.Duration) Cache {
@@ -35,8 +35,8 @@ func (c *Cache) Set(key string, value interface{}) {
 
 // Get retrieves the value associated with the key in case it exists and is not expired
 func (c *Cache) Get(key string) (interface{}, bool) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	e, ok := c.data[key]
 	if !ok {
 		return nil, false
