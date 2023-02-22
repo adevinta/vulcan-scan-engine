@@ -139,18 +139,24 @@ func (c *ChecksRunner) CreateScanChecks(id string) error {
 	if scan.TargetGroups == nil || len(*scan.TargetGroups) == 0 {
 		// Scans with no target groups should not be RUNNING.
 		status := service.ScanStatusFinished
-		scan.Status = &status
-		level.Warn(c.l).Log("ScanWithNoTargetGroups", id)
-		_, err = c.store.UpdateScan(sid, scan, []string{service.ScanStatusRunning})
+		updateScan := api.Scan{
+			ID:     sid,
+			Status: &status,
+		}
+		n, err := c.store.UpdateScan(sid, updateScan, []string{service.ScanStatusRunning})
+		level.Warn(c.l).Log("ScanWithNoTargetGroups", id, "Updated", n)
 		return err
 	}
 
 	if scan.StartTime == nil || (time.Since(*scan.StartTime).Hours() > MaxScanAge*24) {
 		// Scans older than the max age should not be RUNNING.
 		status := service.ScanStatusFinished
-		scan.Status = &status
-		level.Warn(c.l).Log("ScanTooOld", id)
-		_, err = c.store.UpdateScan(sid, scan, []string{service.ScanStatusRunning})
+		updateScan := api.Scan{
+			ID:     sid,
+			Status: &status,
+		}
+		n, err := c.store.UpdateScan(sid, updateScan, []string{service.ScanStatusRunning})
+		level.Warn(c.l).Log("ScanTooOld", id, "Updated", n)
 		return err
 	}
 
