@@ -20,7 +20,7 @@ type CachedAPIClient struct {
 	client *client.Client
 }
 
-// NewCachedAPIClient creates a api client that caches the results for indicated expiration.
+// NewCachedAPIClient creates an api client that caches the results for indicated expiration.
 func NewCachedAPIClient(api *client.Client, expiration time.Duration) *CachedAPIClient {
 	c := util.NewCache(expiration)
 	return &CachedAPIClient{
@@ -29,7 +29,7 @@ func NewCachedAPIClient(api *client.Client, expiration time.Duration) *CachedAPI
 	}
 }
 
-// GetChecktype retrieves the checktype with the indicated name
+// GetChecktype retrieves the checktype with the indicated name.
 func (s *CachedAPIClient) GetChecktype(name string) (*client.Checktype, error) {
 	enabled := "true"
 
