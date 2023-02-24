@@ -86,7 +86,7 @@ var (
 		},
 	}
 
-	jobsCheckTypesInfoTest = map[string]map[string]struct{}{
+	jobsCheckTypesInfoTest = api.ChecktypesByAssettypes{
 		"Hostname": {
 			"vulcan-http-headers": {},
 			"vulcan-nessus":       {},
@@ -144,7 +144,7 @@ var (
 			},
 		},
 
-		ChecktypesInfo: jobsCheckTypesInfoTest,
+		ChecktypesInfo: &jobsCheckTypesInfoTest,
 	}
 
 	scan4Checks = []api.Check{

@@ -37,10 +37,6 @@ type JobSender interface {
 	Send(queueName string, checktypeName string, job Job) error
 }
 
-// ChecktypesByAssettypes is used as a lookup table to check if a checktype can
-// be run against a concrete assettype.
-type ChecktypesByAssettypes map[string]map[string]struct{}
-
 // ChecktypeInformer defines the services required by the JobCreator type to be
 // able to query information about checktypes.
 type ChecktypeInformer interface {
@@ -172,7 +168,7 @@ func (c *ChecksRunner) CreateScanChecks(id string) error {
 		return err
 	}
 
-	checktypesInfo := scan.ChecktypesInfo
+	checktypesInfo := *scan.ChecktypesInfo
 
 	// This variable holds the current target group.
 	currentTargetG := -1
@@ -301,8 +297,8 @@ func (c *ChecksRunner) CreateScanChecks(id string) error {
 			ChecksCreated:           &created,
 			LastCheckCreated:        &lastCheck,
 			LastTargetCheckGCreated: &last,
-			TargetGroups:            &[]api.TargetsChecktypesGroup{},  // Remove creation process data
-			ChecktypesInfo:          map[string]map[string]struct{}{}, // Remove creation process data
+			TargetGroups:            &[]api.TargetsChecktypesGroup{}, // Remove creation process data
+			ChecktypesInfo:          &api.ChecktypesByAssettypes{},   // Remove creation process data
 		}
 
 		level.Info(c.l).Log("Scan", scan.ID, "GeneratedChecks", checkpointCount, "Seconds", time.Since(start).Seconds())
@@ -400,7 +396,7 @@ func (c *ChecksRunner) createCheck(scan api.Scan, g api.TargetsChecktypesGroup, 
 // of the list of the valid pairs {targe1,checktype1} continue creating the
 // jobs.
 func (c *ChecksRunner) createChecksForGroup(scan api.Scan, group api.TargetsChecktypesGroup,
-	start int, checktypesInfo ChecktypesByAssettypes, checkCreated newCheck) error {
+	start int, checktypesInfo api.ChecktypesByAssettypes, checkCreated newCheck) error {
 	// We sort the targets and checktypes groups so, assuming they contain the
 	// same items, we will walk them in the same order in successive calls to
 	// this function.

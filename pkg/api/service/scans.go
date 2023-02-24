@@ -213,7 +213,7 @@ func (s ScansService) CreateScan(ctx context.Context, scan *api.Scan) (uuid.UUID
 	if err != nil {
 		return uuid.Nil, err
 	}
-	scan.ChecktypesInfo = ctypesInfo
+	scan.ChecktypesInfo = &ctypesInfo
 	stats, err := s.getScanStats(ctx, ctypesInfo, scan)
 	if err != nil {
 		return uuid.Nil, err
@@ -245,7 +245,7 @@ func (s ScansService) CreateScan(ctx context.Context, scan *api.Scan) (uuid.UUID
 	return id, nil
 }
 
-func (s ScansService) getScanStats(ctx context.Context, checktypesInfo ChecktypesByAssettypes, scan *api.Scan) (scanStats, error) {
+func (s ScansService) getScanStats(ctx context.Context, checktypesInfo api.ChecktypesByAssettypes, scan *api.Scan) (scanStats, error) {
 	stats := scanStats{
 		NumberOfChecksPerChecktype: map[string]int{},
 	}
@@ -278,12 +278,12 @@ func (s ScansService) getScanStats(ctx context.Context, checktypesInfo Checktype
 	return stats, nil
 }
 
-func (s ScansService) checktypesByAssettype(ctx context.Context) (ChecktypesByAssettypes, error) {
+func (s ScansService) checktypesByAssettype(ctx context.Context) (api.ChecktypesByAssettypes, error) {
 	assettypes, err := s.ctInformer.GetAssettypes()
 	if err != nil {
 		return nil, err
 	}
-	ret := ChecktypesByAssettypes{}
+	ret := api.ChecktypesByAssettypes{}
 	for _, a := range *assettypes {
 		if a.Assettype == nil {
 			continue
