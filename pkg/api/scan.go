@@ -24,6 +24,10 @@ var (
 	CheckStateInconclusive = "INCONCLUSIVE"
 )
 
+// ChecktypesByAssettypes is used as a lookup table to check if a checktype can
+// be run against a concrete assettype.
+type ChecktypesByAssettypes map[string]map[string]struct{}
+
 // Scan holds all the data related to a scan.
 type Scan struct {
 	ID              uuid.UUID                 `json:"id,omitempty"`
@@ -41,11 +45,11 @@ type Scan struct {
 	CheckCount      *int                      `json:"check_count,omitempty"`
 	AbortedAt       *time.Time                `json:"aborted_at,omitempty"`
 
-	LastTargetCheckGCreated *int                           `json:"last_target_check_g_created,omitempty"`
-	LastCheckCreated        *int                           `json:"last_check_created,omitempty"`
-	ChecksCreated           *int                           `json:"checks_created,omitempty"`
-	ChecksFinished          *int                           `json:"checks_finished,omitempty"`
-	ChecktypesInfo          map[string]map[string]struct{} `json:"checkstypes_info,omitempty"`
+	LastTargetCheckGCreated *int                    `json:"last_target_check_g_created,omitempty"`
+	LastCheckCreated        *int                    `json:"last_check_created,omitempty"`
+	ChecksCreated           *int                    `json:"checks_created,omitempty"`
+	ChecksFinished          *int                    `json:"checks_finished,omitempty"`
+	ChecktypesInfo          *ChecktypesByAssettypes `json:"checkstypes_info,omitempty"`
 }
 
 // ScanNotification represents the data of a scan sent to an SNS topic.

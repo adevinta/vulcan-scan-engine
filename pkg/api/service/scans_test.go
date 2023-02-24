@@ -331,7 +331,7 @@ func TestScansService_CreateScan(t *testing.T) {
 				ChecksCreated:  intToPtr(0),
 				ChecksFinished: intToPtr(0),
 				Progress:       floatToPtr(0.0),
-				ChecktypesInfo: map[string]map[string]struct{}{"DomainName": {"vulcan-spf": {}}, "Hostname": {"vulcan-nessus": {}}, "IP": {}},
+				ChecktypesInfo: &api.ChecktypesByAssettypes{"DomainName": {"vulcan-spf": {}}, "Hostname": {"vulcan-nessus": {}}, "IP": {}},
 			},
 		},
 	}
