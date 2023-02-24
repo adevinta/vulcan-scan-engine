@@ -8,8 +8,8 @@ import (
 	"net/http"
 
 	kitendpoint "github.com/go-kit/kit/endpoint"
-	kitlog "github.com/go-kit/kit/log"
 	kithttp "github.com/go-kit/kit/transport/http"
+	kitlog "github.com/go-kit/log"
 	"github.com/goadesign/goa/uuid"
 
 	"github.com/adevinta/vulcan-scan-engine/pkg/api/endpoint"

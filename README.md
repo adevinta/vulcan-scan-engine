@@ -64,6 +64,7 @@ Those are the variables you have to use:
 |PG_SSLMODE|One of these (disable,allow,prefer,require,verify-ca,verify-full)|disable|
 |PG_CA_B64|A base64 encoded ca certificate||
 |PERSISTENCE_HOST||persistence.vulcan.com|
+|PERSISTENCE_CACHE|Cache persistence request for seconds|120|
 |CHECKS_SQS_ARN|ARN for the checks creation queue|arn:aws:sqs:xxx:123456789012:yyy|
 |AWS_SQS_ENDPOINT|Endpoint for SQS creation queue (optional)|http://custom-aws-endpoint|
 |CHECKS_SQS_PROCESSORS|Number of workers processing check updates|8|
@@ -75,6 +76,7 @@ Those are the variables you have to use:
 |AWS_SNS_ENDPOINT|Endpoint for SNS topic (optional)|http://custom-aws-endpoint|
 |CHECKS_CREATOR_WORKERS|Number of workers to run for checks creation||
 |CHECKS_CREATOR_PERIOD|Period (seconds) for which workers should look for checks pending to be created||
+|CHECKS_CREATOR_CHECKPOINT|Number of checks created before saving the state in the scan|100|
 |QUEUES_DEFAULT_ARN|Default checks queue ARN|arn:aws:sqs:xxx:123456789012:yyy|
 |QUEUES_NESSUS_ARN|Nessus checks ARN *TO BE DEPRECATED*|arn:aws:sqs:xxx:123456789012:yyy|
 |QUEUES_NESSUS_CHECKTYPES|List of checks to create in nessus queue *TO BE DEPRECATED*|["vulcan-nessus"]|

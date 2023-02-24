@@ -13,7 +13,7 @@ const defaultQueueName = "default"
 
 // ErrNoDefaultQueueDefined is returned when the initial default queues
 // configuration does not contain a entry with the key "default".
-var ErrNoDefaultQueueDefined = errors.New("At least a queue with the name 'default' must be defined")
+var ErrNoDefaultQueueDefined = errors.New("at least a queue with the name 'default' must be defined")
 
 // NamedQueuesSender allows to send messages to a queue given its name.
 type NamedQueuesSender interface {

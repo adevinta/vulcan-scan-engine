@@ -5,11 +5,8 @@ Copyright 2021 Adevinta
 package scans
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
-	"io/ioutil"
-	"net/http"
 	"sort"
 	"strings"
 	"sync"
@@ -19,7 +16,7 @@ import (
 	"github.com/adevinta/vulcan-scan-engine/pkg/api"
 	"github.com/adevinta/vulcan-scan-engine/pkg/api/persistence/db"
 	"github.com/adevinta/vulcan-scan-engine/pkg/api/service"
-	"github.com/go-kit/kit/log"
+	"github.com/go-kit/log"
 	uuid2 "github.com/goadesign/goa/uuid"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -42,7 +39,7 @@ var (
 	JobsTrans = cmp.Transformer("Sort", func(in []Job) []Job {
 		out := append([]Job(nil), in...)
 		sort.Slice(out, func(i, j int) bool {
-			less := strings.Compare(*&out[i].Image, *&out[j].Image)
+			less := strings.Compare(out[i].Image, out[j].Image)
 			return less < 0
 
 		})
@@ -220,7 +217,7 @@ var (
 				Timeout:       *checktypes["vulcan-http-headers"].Checktype.Timeout,
 				Options:       *checktypes["vulcan-http-headers"].Checktype.Options,
 				Metadata:      map[string]string{"program": "scan4Program", "team": "5a1346f1"},
-				RequiredVars:  *&checktypes["vulcan-http-headers"].Checktype.RequiredVars,
+				RequiredVars:  checktypes["vulcan-http-headers"].Checktype.RequiredVars,
 			},
 			Queue:         *checktypes["vulcan-http-headers"].Checktype.QueueName,
 			ChecktypeName: "vulcan-http-headers",
@@ -262,28 +259,7 @@ type inMemChecktypesInformer struct {
 	Checktypes map[string]client.Checktype
 }
 
-func (i inMemChecktypesInformer) IndexChecktypes(ctx context.Context, path string, enabled *string, name *string) (*http.Response, error) {
-	if name == nil {
-		return nil, errors.New("name must be specified")
-	}
-	ct, ok := i.Checktypes[*name]
-	if !ok {
-		return &http.Response{}, nil
-	}
-	r := ioutil.NopCloser(strings.NewReader(ct.Checktype.Name))
-	resp := http.Response{
-		StatusCode: http.StatusFound,
-		Body:       r,
-	}
-	return &resp, nil
-}
-
-func (i inMemChecktypesInformer) DecodeChecktype(resp *http.Response) (*client.Checktype, error) {
-	c, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-	name := string(c)
+func (i inMemChecktypesInformer) GetChecktype(name string) (*client.Checktype, error) {
 	checktype, ok := i.Checktypes[name]
 	if !ok {
 		return nil, nil
@@ -325,11 +301,12 @@ func (cl *inMemChecksListener) CheckUpdated(ch api.Check, programID string) {
 
 func TestChecksRunner_CreateScanChecks(t *testing.T) {
 	type fields struct {
-		store    Store
-		sender   JobSender
-		listener CheckNotifier
-		l        Logger
-		pclient  ChecktypeInformer
+		store      Store
+		sender     JobSender
+		listener   CheckNotifier
+		l          Logger
+		pclient    ChecktypeInformer
+		checkpoint int
 	}
 
 	tests := []struct {
@@ -353,7 +330,8 @@ func TestChecksRunner_CreateScanChecks(t *testing.T) {
 				pclient: inMemChecktypesInformer{
 					Checktypes: checktypes,
 				},
-				sender: &inMemJobsSender{},
+				sender:     &inMemJobsSender{},
+				checkpoint: 2,
 			},
 			id: scan4ID,
 			stateChecker: func(s Store, c JobSender, listener CheckNotifier, t *testing.T) {
@@ -382,9 +360,7 @@ func TestChecksRunner_CreateScanChecks(t *testing.T) {
 				}
 				listenerStore := listener.(*inMemChecksListener)
 				gotChecks = []api.Check{}
-				for _, c := range listenerStore.checks {
-					gotChecks = append(gotChecks, c)
-				}
+				gotChecks = append(gotChecks, listenerStore.checks...)
 				wantChecksUpdated := scan4Checks
 				checksUpdatedDiff := cmp.Diff(wantChecksUpdated, gotChecks, ChecksTrans, cmpopts.IgnoreFields(api.Check{}, "ID", "CreatedAt", "UpdatedAt", "Data"))
 				if checksUpdatedDiff != "" {
@@ -408,6 +384,7 @@ func TestChecksRunner_CreateScanChecks(t *testing.T) {
 				checksListener: tt.fields.listener,
 				l:              tt.fields.l,
 				ctinformer:     tt.fields.pclient,
+				checkpoint:     tt.fields.checkpoint,
 			}
 			if err := c.CreateScanChecks(tt.id); (err != nil) != tt.wantErr {
 				t.Errorf("ChecksCreator.CreateScanChecks() error = %v, wantErr %v", err, tt.wantErr)
@@ -530,14 +507,6 @@ func mustUUIDFromString(id string) uuid.UUID {
 		panic(err)
 	}
 	return u
-}
-
-func mustPtrUUIDFromString(id string) *uuid2.UUID {
-	u, err := uuid2.FromString(id)
-	if err != nil {
-		panic(err)
-	}
-	return &u
 }
 
 func intToPtr(i int) *int {

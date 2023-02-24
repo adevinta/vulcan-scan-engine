@@ -17,8 +17,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
-	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 )
 
 const (
@@ -26,8 +26,8 @@ const (
 )
 
 var (
-	errInvalidEvent      = errors.New("Invalid event")
-	errErrorReadCanceled = errors.New("Canceled read from sqs")
+	errInvalidEvent      = errors.New("invalid event")
+	errErrorReadCanceled = errors.New("canceled read from sqs")
 )
 
 // Config holds the required sqs config information.
@@ -43,10 +43,6 @@ type Config struct {
 
 type messageStore interface {
 	CreateDocument(doc interface{}, data []byte) (int64, error)
-}
-
-type message struct {
-	Message *string
 }
 
 // MessageProcessor defines the functions required by the SQSConsumer to process a message.

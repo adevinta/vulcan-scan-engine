@@ -5,15 +5,13 @@ Copyright 2021 Adevinta
 package scans
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
 	"sort"
 	"time"
 
-	"github.com/go-kit/kit/log/level"
+	"github.com/go-kit/log/level"
 	uuid "github.com/satori/go.uuid"
 
 	"github.com/adevinta/vulcan-core-cli/vulcan-core/client"
@@ -27,8 +25,7 @@ import (
 const MaxScanAge = 5
 
 var (
-	errChecktypeNotFound = errors.New("checktype no found")
-	errScanTerminated    = errors.New("scan is not RUNNING anymore")
+	errScanTerminated = errors.New("scan is not RUNNING anymore")
 )
 
 // nexCheck function called when the payload of a new check
@@ -47,17 +44,7 @@ type ChecktypesByAssettypes map[string]map[string]struct{}
 // ChecktypeInformer defines the services required by the JobCreator type to be
 // able to query information about checktypes.
 type ChecktypeInformer interface {
-	IndexChecktypes(ctx context.Context, path string, enabled *string, name *string) (*http.Response, error)
-	DecodeChecktype(resp *http.Response) (*client.Checktype, error)
-}
-
-type checkData struct {
-	ChecktypeName string
-	Options       string
-	Target        string
-	Tag           string
-	AssetType     string
-	Metadata      map[string]string
+	GetChecktype(name string) (*client.Checktype, error)
 }
 
 // Store defines the methods required by the check creator to query and update
@@ -88,18 +75,20 @@ type ChecksRunner struct {
 	l              Logger
 	checksListener CheckNotifier
 	ctinformer     ChecktypeInformer
+	checkpoint     int
 }
 
 // NewJobsCreator creates and returns a new JobsCreator given its
 // dependencies.
 func NewJobsCreator(store Store,
-	sender JobSender, ctinformer ChecktypeInformer, checkListener CheckNotifier, l Logger) *ChecksRunner {
+	sender JobSender, ctinformer ChecktypeInformer, checkListener CheckNotifier, checkpoint int, l Logger) *ChecksRunner {
 	return &ChecksRunner{
 		store:          store,
 		sender:         sender,
 		l:              l,
 		ctinformer:     ctinformer,
 		checksListener: checkListener,
+		checkpoint:     checkpoint,
 	}
 }
 
@@ -147,21 +136,27 @@ func (c *ChecksRunner) CreateScanChecks(id string) error {
 		return err
 	}
 
-	if scan.TargetGroups == nil {
+	if scan.TargetGroups == nil || len(*scan.TargetGroups) == 0 {
 		// Scans with no target groups should not be RUNNING.
 		status := service.ScanStatusFinished
-		scan.Status = &status
-		level.Warn(c.l).Log("ScanWithNoTargetGroups", id)
-		_, err = c.store.UpdateScan(sid, scan, []string{service.ScanStatusRunning})
+		updateScan := api.Scan{
+			ID:     sid,
+			Status: &status,
+		}
+		n, err := c.store.UpdateScan(sid, updateScan, []string{service.ScanStatusRunning})
+		level.Warn(c.l).Log("ScanWithNoTargetGroups", id, "Updated", n)
 		return err
 	}
 
 	if scan.StartTime == nil || (time.Since(*scan.StartTime).Hours() > MaxScanAge*24) {
 		// Scans older than the max age should not be RUNNING.
 		status := service.ScanStatusFinished
-		scan.Status = &status
-		level.Warn(c.l).Log("ScanTooOld", id)
-		_, err = c.store.UpdateScan(sid, scan, []string{service.ScanStatusRunning})
+		updateScan := api.Scan{
+			ID:     sid,
+			Status: &status,
+		}
+		n, err := c.store.UpdateScan(sid, updateScan, []string{service.ScanStatusRunning})
+		level.Warn(c.l).Log("ScanTooOld", id, "Updated", n)
 		return err
 	}
 
@@ -200,7 +195,13 @@ func (c *ChecksRunner) CreateScanChecks(id string) error {
 	if scan.ChecksCreated != nil {
 		checksCreated = *scan.ChecksCreated
 	}
-	level.Debug(c.l).Log("CreatingChecks", len(*scan.TargetGroups))
+
+	level.Info(c.l).Log("Scan", id, "TargetGroups", len(*scan.TargetGroups), "CheckCount", scan.CheckCount,
+		"StartFrom", fmt.Sprintf("%d_%d", currentTargetG, currentCheckG), "ChecksCreated", checksCreated)
+
+	checkpointCount := 0
+	start := time.Now()
+
 	for tGroupIndex := currentTargetG; tGroupIndex < len(*scan.TargetGroups); tGroupIndex++ {
 		tgroups := *scan.TargetGroups
 		tg := tgroups[tGroupIndex]
@@ -231,11 +232,12 @@ func (c *ChecksRunner) CreateScanChecks(id string) error {
 				if err != nil {
 					return err
 				}
-				// We ensure the check has te correct id here (see the comment above).
+				// We ensure the check has the correct id here (see the comment above).
 				if check.ID != id {
+					level.Warn(c.l).Log("ExistingCheck", index, "Check", id, "Scan", check.ScanID)
 					check.ID = id
 				} else {
-					// We only publish a change when if a check has been created.
+					// We only publish a change when a check has been created.
 					c.checksListener.CheckUpdated(check, util.Ptr2Str(scan.ExternalID))
 				}
 
@@ -255,23 +257,31 @@ func (c *ChecksRunner) CreateScanChecks(id string) error {
 				// Update the last create check of the scan in the DB.
 				scan.LastCheckCreated = &checkGroupIndex
 				checksCreated++
-				created := checksCreated
-				updateScan := api.Scan{
-					ID:               scan.ID,
-					ChecksCreated:    &created,
-					LastCheckCreated: &checkGroupIndex,
+
+				// Update the scan every Checkpoint check inserts
+				// Always executes for the first time to validate the scanTerminated.
+				if c.checkpoint == 0 || checkpointCount%c.checkpoint == 0 {
+					level.Info(c.l).Log("Checkpointing", index, "Scan", check.ScanID, "Count", checkpointCount)
+					created := checksCreated
+					updateScan := api.Scan{
+						ID:               scan.ID,
+						ChecksCreated:    &created,
+						LastCheckCreated: &checkGroupIndex,
+					}
+					count, err := c.store.UpdateScan(scan.ID, updateScan, []string{service.ScanStatusRunning})
+					if err != nil {
+						return err
+					}
+					// If the scan has not been updated it's because is not RUNNING, for
+					// instance because it has been aborted. In that case we stop
+					// creating checks.
+					if count == 0 {
+						return errScanTerminated
+					}
 				}
-				count, err := c.store.UpdateScan(scan.ID, updateScan, []string{service.ScanStatusRunning})
-				if err != nil {
-					return err
-				}
+				checkpointCount++
+
 				checkGroupIndex++
-				// If the scan has not been updated it's because is not RUNNING, for
-				// instance because it has been aborted. In that case we stop
-				// creating checks.
-				if count == 0 {
-					return errScanTerminated
-				}
 
 				return nil
 			})
@@ -285,12 +295,17 @@ func (c *ChecksRunner) CreateScanChecks(id string) error {
 		}
 		last := tGroupIndex
 		lastCheck := -1
+		created := checksCreated
 		updateScan := api.Scan{
 			ID:                      scan.ID,
+			ChecksCreated:           &created,
 			LastCheckCreated:        &lastCheck,
 			LastTargetCheckGCreated: &last,
-			TargetGroups:            &[]api.TargetsChecktypesGroup{}, // Remove creation process data
+			TargetGroups:            &[]api.TargetsChecktypesGroup{},  // Remove creation process data
+			ChecktypesInfo:          map[string]map[string]struct{}{}, // Remove creation process data
 		}
+
+		level.Info(c.l).Log("Scan", scan.ID, "GeneratedChecks", checkpointCount, "Seconds", time.Since(start).Seconds())
 		_, err = c.store.UpdateScan(scan.ID, updateScan, []string{service.ScanStatusRunning})
 		if err != nil {
 			return err
@@ -315,7 +330,7 @@ func (c *ChecksRunner) createCheck(scan api.Scan, g api.TargetsChecktypesGroup, 
 		t = *scan.Tag
 	}
 
-	ctInfo, err := c.checktypeInfo(ct.Name)
+	ctInfo, err := c.ctinformer.GetChecktype(ct.Name)
 	if err != nil {
 		return api.Check{}, err
 	}
@@ -368,22 +383,6 @@ func (c *ChecksRunner) createCheck(scan api.Scan, g api.TargetsChecktypesGroup, 
 	return check, nil
 }
 
-func (c *ChecksRunner) checktypeInfo(name string) (client.Checktype, error) {
-	enabled := "true"
-	resp, err := c.ctinformer.IndexChecktypes(context.Background(), client.IndexChecktypesPath(), &enabled, &name)
-	if err != nil {
-		return client.Checktype{}, err
-	}
-	ct, err := c.ctinformer.DecodeChecktype(resp)
-	if err != nil {
-		return client.Checktype{}, err
-	}
-	if ct == nil {
-		return client.Checktype{}, errChecktypeNotFound
-	}
-	return *ct, err
-}
-
 // createChecksForGroup creates the jobs, that is the messages for an agent to
 // execute the checks of a given scan group starting at the given check of that
 // group. For each job created, it "call backs" the function "pusher" to give
@@ -434,6 +433,9 @@ func (c *ChecksRunner) createChecksForGroup(scan api.Scan, group api.TargetsChec
 				continue
 			}
 			check, err := c.createCheck(scan, group, t, ct)
+			if err != nil {
+				return err
+			}
 			err = checkCreated(check)
 			if err != nil {
 				return err

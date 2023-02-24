@@ -869,10 +869,6 @@ func TestPersistence_GetCreatingScans(t *testing.T) {
 	}
 }
 
-func uint32ToPtr(n uint32) *uint32 {
-	return &n
-}
-
 func TestPersistence_TryLockScan(t *testing.T) {
 	db, err := db.NewDB(dialect, connStr)
 	defer db.Close() //nolint

@@ -9,7 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 )
 
@@ -47,7 +47,7 @@ func (c *client) AbortChecks(ctx context.Context, checks []string) error {
 		return err
 	}
 	if !isOKStatus(resp.StatusCode) {
-		respBody, _ := ioutil.ReadAll(resp.Body)
+		respBody, _ := io.ReadAll(resp.Body)
 		defer resp.Body.Close()
 		return fmt.Errorf("err: stream returned wrong HTTP status %d with body: %s",
 			resp.StatusCode, string(respBody))

@@ -36,35 +36,35 @@ type fixtureScan struct {
 var (
 	connStr      = fmt.Sprintf(testutil.DBConnString, testutil.TestDBUser, testutil.TestDBPassword, dbName)
 	fixtureScans = map[string]fixtureScan{
-		"Scan1": fixtureScan{
+		"Scan1": {
 			ID: "c3b5af18-4e1d-11e8-9c2d-fa7ae01bbebc",
 			Checks: map[string]string{
 				"Check1": "c3b5af18-4e1d-11e8-9c2d-fa7ae01bbeaa",
 				"Check2": "c3b5afd8-4e1d-11d8-9c2d-fa7ae01bbeaa",
 			},
 		},
-		"Scan2": fixtureScan{
+		"Scan2": {
 			ID: "a3b5af18-4e1d-11e8-9c2d-fa7ae01bbebc",
 			Checks: map[string]string{
 				"Check3": "c3b5bfe8-4e1d-11d8-9c2d-fa7ae01bbeaa",
 			},
 		},
-		"Scan3": fixtureScan{
+		"Scan3": {
 			ID:     "a3b5af18-4e1d-11e8-9c2d-fa7ae01bbeba",
 			Checks: map[string]string{},
 		},
-		"Scan4": fixtureScan{
+		"Scan4": {
 			ID:     "a3b5af18-4e2d-22e8-9c2d-fa7ad01bbeba",
 			Checks: map[string]string{},
 		},
-		"Scan5": fixtureScan{
+		"Scan5": {
 			ID: "a3b5ca18-4e2d-22e8-9c2d-fa7ad01bbeba",
 			Checks: map[string]string{
 				"Check4": "b3b5ca18-4e2d-22e8-9c2d-fa7ad01bbeba",
 				"Check5": "a3b5ca18-4e2d-22e8-9c2d-fa7ad03bbfaa",
 			},
 		},
-		"Scan2Delete": fixtureScan{
+		"Scan2Delete": {
 			ID: "e5699669-b212-44b2-8b30-32e1d6d14f5c",
 			Checks: map[string]string{
 				"Check1Scan2Delete": "e750dfb0-c5ab-4133-941f-cfd26ec4db6c",
@@ -517,13 +517,13 @@ func TestDB_GetDocsByField(t *testing.T) {
 				value: `"test"`,
 			},
 			want: []map[string]interface{}{
-				map[string]interface{}{
+				{
 					"targets": map[string]interface{}{
 						"name": "test",
 					},
 					"start_time": "2020-04-04T07:53:19.572375+01:00",
 				},
-				map[string]interface{}{
+				{
 					"start_time": "2019-03-19T13:53:19.572375+01:00",
 					"targets":    map[string]interface{}{"name": "test"},
 				},
@@ -537,7 +537,7 @@ func TestDB_GetDocsByField(t *testing.T) {
 				value: `"id"`,
 			},
 			want: []map[string]interface{}{
-				map[string]interface{}{"extid": "id", "name": "scan"},
+				{"extid": "id", "name": "scan"},
 			},
 		},
 	}
@@ -591,13 +591,13 @@ func TestDB_GetDocsByFieldOrderByLimit(t *testing.T) {
 				limit: 2,
 			},
 			want: []map[string]interface{}{
-				map[string]interface{}{
+				{
 					"targets": map[string]interface{}{
 						"name": "test",
 					},
 					"start_time": "2020-04-04T07:53:19.572375+01:00",
 				},
-				map[string]interface{}{
+				{
 					"start_time": "2019-03-19T13:53:19.572375+01:00",
 					"targets":    map[string]interface{}{"name": "test"},
 				},
@@ -611,7 +611,7 @@ func TestDB_GetDocsByFieldOrderByLimit(t *testing.T) {
 				value: `"id"`,
 			},
 			want: []map[string]interface{}{
-				map[string]interface{}{"extid": "id", "name": "scan"},
+				{"extid": "id", "name": "scan"},
 			},
 		},
 	}
@@ -639,10 +639,6 @@ func TestDB_GetDocsByFieldOrderByLimit(t *testing.T) {
 			}
 		})
 	}
-}
-
-func uint32ToPtr(n uint32) *uint32 {
-	return &n
 }
 
 func TestDB_DeleteChildDocs(t *testing.T) {

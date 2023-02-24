@@ -14,7 +14,7 @@ import (
 var (
 	// ErrInvalidPeriod indicates that the rate specified for the task is not
 	// valid.
-	ErrInvalidPeriod = errors.New("Invalid period")
+	ErrInvalidPeriod = errors.New("invalid period")
 )
 
 // Logger defines the log interface used by the Scheduler.

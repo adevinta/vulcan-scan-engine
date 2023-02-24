@@ -14,7 +14,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/service/sns"
 	"github.com/aws/aws-sdk-go/service/sns/snsiface"
-	"github.com/go-kit/kit/log"
+	"github.com/go-kit/log"
 )
 
 type snsMock struct {

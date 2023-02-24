@@ -12,6 +12,7 @@ migrations_subdir = ""
 [vulcan]
 schema = "http"
 host = "$PERSISTENCE_HOST"
+cache = "$PERSISTENCE_CACHE"
 
 [sqs]
 disabled = false
@@ -43,6 +44,7 @@ url = "$STREAM_URL"
 num_of_workers = $CHECKS_CREATOR_WORKERS
 # in seconds.
 period =  $CHECKS_CREATOR_PERIOD
+checkpoint = $CHECKS_CREATOR_CHECKPOINT
 
 [queues]
 

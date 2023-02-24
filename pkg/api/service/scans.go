@@ -13,8 +13,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 
 	uuid "github.com/satori/go.uuid"
 	validator "gopkg.in/go-playground/validator.v9"
@@ -54,8 +54,7 @@ const (
 // ChecktypesInformer represents an informer for the mapping
 // between checktypes and supported asset types.
 type ChecktypesInformer interface {
-	IndexAssettypes(ctx context.Context, path string) (*http.Response, error)
-	DecodeAssettypeCollection(resp *http.Response) (client.AssettypeCollection, error)
+	GetAssettypes() (*client.AssettypeCollection, error)
 }
 
 // ChecksCreator abstracts the actual implementation
@@ -104,14 +103,10 @@ func New(logger log.Logger, db persistence.ScansStore, client ChecktypesInformer
 
 // ListScans returns the list of scans.
 func (s ScansService) ListScans(ctx context.Context, extID string, offset, limit uint32) ([]api.Scan, error) {
-	var err error
-	scans := []api.Scan{}
 	if extID == "" {
-		scans, err = s.db.GetScans(offset, limit)
-	} else {
-		scans, err = s.db.GetScansByExternalID(extID, offset, limit)
+		return s.db.GetScans(offset, limit)
 	}
-	return scans, err
+	return s.db.GetScansByExternalID(extID, offset, limit)
 }
 
 // GetScan returns the scan corresponding with a given id.
@@ -133,13 +128,10 @@ func (s ScansService) GetScanChecks(ctx context.Context, scanID, status string) 
 	if err != nil {
 		return []api.Check{}, errors.Assertion(fmt.Sprintf("not valid scan ID %s", scanID))
 	}
-	checks := []api.Check{}
 	if status == "" {
-		checks, err = s.db.GetScanChecks(id)
-	} else {
-		checks, err = s.db.GetScanChecksByStatus(id, status)
+		return s.db.GetScanChecks(id)
 	}
-	return checks, err
+	return s.db.GetScanChecksByStatus(id, status)
 }
 
 // GetScanStats returns the check stats for the given scan ID.
@@ -230,6 +222,8 @@ func (s ScansService) CreateScan(ctx context.Context, scan *api.Scan) (uuid.UUID
 	zero := 0
 	scan.ChecksCreated = &zero
 	scan.ChecksFinished = &zero
+	var floatZero float32 = 0.0
+	scan.Progress = &floatZero
 	_, err = s.db.CreateScan(id, *scan)
 	if err != nil {
 		return uuid.Nil, err
@@ -246,14 +240,8 @@ func (s ScansService) CreateScan(ctx context.Context, scan *api.Scan) (uuid.UUID
 	if scan.Tag != nil {
 		tag = *scan.Tag
 	}
-	_ = level.Info(s.logger).Log("ScanCreated", id, "CreationTime", time2Create.String(), "ExternalID",
-		externalID, "Tag", tag)
-	go func() {
-		err := s.ccreator.CreateScanChecks(id.String())
-		if err != nil {
-			_ = level.Error(s.logger).Log("ErrorCreatingChecks", err)
-		}
-	}()
+	_ = level.Info(s.logger).Log("ScanCreated", id, "CreationTime", time2Create.String(), "CheckCount", scan.CheckCount,
+		"ExternalID", externalID, "Tag", tag)
 	return id, nil
 }
 
@@ -291,16 +279,12 @@ func (s ScansService) getScanStats(ctx context.Context, checktypesInfo Checktype
 }
 
 func (s ScansService) checktypesByAssettype(ctx context.Context) (ChecktypesByAssettypes, error) {
-	resp, err := s.ctInformer.IndexAssettypes(ctx, client.IndexAssettypesPath())
-	if err != nil {
-		return nil, err
-	}
-	assettypes, err := s.ctInformer.DecodeAssettypeCollection(resp)
+	assettypes, err := s.ctInformer.GetAssettypes()
 	if err != nil {
 		return nil, err
 	}
 	ret := ChecktypesByAssettypes{}
-	for _, a := range assettypes {
+	for _, a := range *assettypes {
 		if a.Assettype == nil {
 			continue
 		}
