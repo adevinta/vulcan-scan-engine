@@ -393,6 +393,10 @@ func (s ScansService) ProcessScanCheckNotification(ctx context.Context, msg []by
 	}
 	if status == ScanStatusFinished {
 		err = s.notifyScan(scanID)
+		if err != nil {
+			return err
+		}
+		err = s.db.DeleteScanChecks(scanID)
 	}
 	return err
 }
