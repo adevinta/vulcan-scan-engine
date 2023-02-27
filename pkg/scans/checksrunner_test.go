@@ -493,6 +493,12 @@ func (s *inMemoryStore) InsertCheckIfNotExists(c api.Check) (string, error) {
 	return found.ID, nil
 }
 
+func (s *inMemoryStore) DeleteScanChecks(scanID uuid.UUID) (int64, error) {
+	n := len(s.checks)
+	s.checks = make(map[string]api.Check)
+	return int64(n), nil
+}
+
 func mustUUID2FromString(id string) uuid2.UUID {
 	u, err := uuid2.FromString(id)
 	if err != nil {

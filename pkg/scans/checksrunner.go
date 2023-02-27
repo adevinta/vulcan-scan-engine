@@ -51,6 +51,7 @@ type Store interface {
 	ReleaseScanLock(l *db.Lock) error
 	GetScanByID(id uuid.UUID) (api.Scan, error)
 	UpdateScan(id uuid.UUID, scan api.Scan, updateStates []string) (int64, error)
+	DeleteScanChecks(scanID uuid.UUID) (int64, error)
 	InsertCheckIfNotExists(c api.Check) (string, error)
 }
 
@@ -140,7 +141,10 @@ func (c *ChecksRunner) CreateScanChecks(id string) error {
 			Status: &status,
 		}
 		n, err := c.store.UpdateScan(sid, updateScan, []string{service.ScanStatusRunning})
-		level.Warn(c.l).Log("ScanWithNoTargetGroups", id, "Updated", n)
+		level.Warn(c.l).Log("ScanWithNoTargetGroups", id, "Updated", n, "Err", err)
+		n, err = c.store.DeleteScanChecks(sid)
+		level.Warn(c.l).Log("DeleteFinishedChecks", id, "Count", n, "Err", err)
+
 		return err
 	}
 
@@ -152,7 +156,9 @@ func (c *ChecksRunner) CreateScanChecks(id string) error {
 			Status: &status,
 		}
 		n, err := c.store.UpdateScan(sid, updateScan, []string{service.ScanStatusRunning})
-		level.Warn(c.l).Log("ScanTooOld", id, "Updated", n)
+		level.Warn(c.l).Log("ScanTooOld", id, "Updated", n, "Err", err)
+		n, err = c.store.DeleteScanChecks(sid)
+		level.Warn(c.l).Log("DeleteFinishedChecks", id, "Count", n, "Err", err)
 		return err
 	}
 

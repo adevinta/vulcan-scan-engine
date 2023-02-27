@@ -191,12 +191,15 @@ func (db DB) CreateChildDoc(table string, parentID uuid.UUID, doc []byte) (int64
 }
 
 // DeleteChildDocs deletes all the docs with the given parent id.
-func (db DB) DeleteChildDocs(table string, parentID uuid.UUID) error {
+func (db DB) DeleteChildDocs(table string, parentID uuid.UUID) (int64, error) {
 	strExec := `DELETE FROM %s WHERE parent_id = ?`
 	st := fmt.Sprintf(strExec, table)
 	st = db.db.Rebind(st)
-	_, err := db.db.Exec(st, parentID)
-	return err
+	res, err := db.db.Exec(st, parentID)
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
 }
 
 // UpsertChildDoc adds or updates new document as a child of an existing one.
@@ -534,10 +537,10 @@ func (db DB) CreateDocument(doc interface{}, data []byte) (int64, error) {
 }
 
 // DeleteChildDocuments deletes all the documents related to a given parent id.
-func (db DB) DeleteChildDocuments(id uuid.UUID, doc interface{}) error {
+func (db DB) DeleteChildDocuments(id uuid.UUID, doc interface{}) (int64, error) {
 	tableName := reflect.TypeOf(doc).Name()
 	if tableName == "" {
-		return ErrAnonymousType
+		return 0, ErrAnonymousType
 	}
 	// By convention the name of the type is the singular form of table's name.
 	tableName = tableName + "s"

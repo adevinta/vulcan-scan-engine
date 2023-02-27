@@ -396,7 +396,9 @@ func (s ScansService) ProcessScanCheckNotification(ctx context.Context, msg []by
 		if err != nil {
 			return err
 		}
-		err = s.db.DeleteScanChecks(scanID)
+		n, err := s.db.DeleteScanChecks(scanID)
+		_ = level.Info(s.logger).Log("DeleteFinishedChecks", scanID, "Count", n)
+		return err
 	}
 	return err
 }

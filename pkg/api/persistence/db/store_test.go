@@ -667,7 +667,7 @@ func TestDB_DeleteChildDocs(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err := db.DeleteChildDocs(tt.args.table, tt.args.parentID); (err != nil) != tt.wantErr {
+			if _, err := db.DeleteChildDocs(tt.args.table, tt.args.parentID); (err != nil) != tt.wantErr {
 				t.Errorf("DB.DeleteChildDocs() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

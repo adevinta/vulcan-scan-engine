@@ -40,7 +40,7 @@ type fakeScansPersistence struct {
 	ScanGetter               func(id uuid.UUID) (api.Scan, error)
 	ScanUpdater              func(id uuid.UUID, scan api.Scan, updateStates []string) (int64, error)
 	ScanByExternalIDGetter   func(ID string, offset, limit uint32) ([]api.Scan, error)
-	ScanChecksRemover        func(scanID uuid.UUID) error
+	ScanChecksRemover        func(scanID uuid.UUID) (int64, error)
 	ScanIDForCheckGetter     func(ID uuid.UUID) (uuid.UUID, error)
 	CheckGetter              func(id uuid.UUID) (api.Check, error)
 	FinishedCheckAdder       func(ID uuid.UUID) (int64, error)
@@ -77,7 +77,7 @@ func (f fakeScansPersistence) GetScanStats(scanID uuid.UUID) (map[string]int, er
 	return f.ScanStatsGetter(scanID)
 }
 
-func (f fakeScansPersistence) DeleteScanChecks(scanID uuid.UUID) error {
+func (f fakeScansPersistence) DeleteScanChecks(scanID uuid.UUID) (int64, error) {
 	return f.ScanChecksRemover(scanID)
 }
 
@@ -169,9 +169,9 @@ func newInMemoryStore(scans *sync.Map) inMemoryStore {
 				})
 				return snapshot, nil
 			},
-			ScanChecksRemover: func(scanID uuid.UUID) error {
+			ScanChecksRemover: func(scanID uuid.UUID) (int64, error) {
 				scans.Delete(scanID)
-				return nil
+				return 10, nil
 			},
 		},
 	}

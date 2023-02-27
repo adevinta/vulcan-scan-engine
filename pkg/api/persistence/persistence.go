@@ -37,7 +37,7 @@ type ScansStore interface {
 	UpdateScan(id uuid.UUID, scan api.Scan, updateStates []string) (int64, error)
 	GetScansByExternalID(ID string, offset, limit uint32) ([]api.Scan, error)
 	GetCheckByID(id uuid.UUID) (api.Check, error)
-	DeleteScanChecks(scanID uuid.UUID) error
+	DeleteScanChecks(scanID uuid.UUID) (int64, error)
 	GetScanIDForCheck(ID uuid.UUID) (uuid.UUID, error)
 	AddCheckAsFinished(checkID uuid.UUID) (int64, error)
 	GetScanStatus(ID uuid.UUID) (api.Scan, error)
@@ -236,7 +236,7 @@ func (db Persistence) GetScanChecksByStatus(scanID uuid.UUID, status string) ([]
 }
 
 // DeleteScanChecks deletes all the checks of a given scan.
-func (db Persistence) DeleteScanChecks(scanID uuid.UUID) error {
+func (db Persistence) DeleteScanChecks(scanID uuid.UUID) (int64, error) {
 	return db.store.DeleteChildDocuments(scanID, api.Check{})
 }
 
