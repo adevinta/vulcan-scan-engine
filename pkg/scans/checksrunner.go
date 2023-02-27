@@ -132,18 +132,6 @@ func (c *ChecksRunner) CreateScanChecks(id string) error {
 		return err
 	}
 
-	if scan.TargetGroups == nil || len(*scan.TargetGroups) == 0 {
-		// Scans with no target groups should not be RUNNING.
-		status := service.ScanStatusFinished
-		updateScan := api.Scan{
-			ID:     sid,
-			Status: &status,
-		}
-		n, err := c.store.UpdateScan(sid, updateScan, []string{service.ScanStatusRunning})
-		level.Warn(c.l).Log("ScanWithNoTargetGroups", id, "Updated", n)
-		return err
-	}
-
 	if scan.StartTime == nil || (time.Since(*scan.StartTime).Hours() > MaxScanAge*24) {
 		// Scans older than the max age should not be RUNNING.
 		status := service.ScanStatusFinished
@@ -156,15 +144,32 @@ func (c *ChecksRunner) CreateScanChecks(id string) error {
 		return err
 	}
 
+	// The checksCreated var should be never nil for the scans that are using
+	// async creation, in any case we check this in order to avoid panics.
+	checksCreated := 0
+	if scan.ChecksCreated != nil {
+		checksCreated = *scan.ChecksCreated
+	}
+
+	// Recheck if the scan was already finished by other worker since the last query.
+	if *scan.CheckCount == checksCreated {
+		// Scans was already created.
+		level.Warn(c.l).Log("ScanAlreadyCreated", id)
+		return err
+	}
+
+	if scan.TargetGroups == nil || len(*scan.TargetGroups) == 0 {
+		// Scans with no target groups should not be RUNNING.
+		level.Warn(c.l).Log("ScanWithNoTargetGroups", id)
+		return err
+	}
+
 	// The checktypes info used to create the checks of a scan should be fixed
 	// thus stored in the scan, so even if that info changes meanwhile the
 	// checks of the scan are being created the checks remain the same.
 	if scan.ChecktypesInfo == nil {
 		// Scans with no target groups should not be RUNNING.
-		status := service.ScanStatusFinished
-		scan.Status = &status
 		level.Warn(c.l).Log("ScanWithNoChecktypesInfo", id)
-		_, err = c.store.UpdateScan(sid, scan, []string{service.ScanStatusRunning})
 		return err
 	}
 
@@ -185,12 +190,6 @@ func (c *ChecksRunner) CreateScanChecks(id string) error {
 		currentCheckG = *scan.LastCheckCreated
 	}
 	currentCheckG++
-	// The checksCreated var should be never nil for the scans that are using
-	// async creation, in any case we check this in order to avoid panics.
-	checksCreated := 0
-	if scan.ChecksCreated != nil {
-		checksCreated = *scan.ChecksCreated
-	}
 
 	level.Info(c.l).Log("Scan", id, "TargetGroups", len(*scan.TargetGroups), "CheckCount", scan.CheckCount,
 		"StartFrom", fmt.Sprintf("%d_%d", currentTargetG, currentCheckG), "ChecksCreated", checksCreated)
