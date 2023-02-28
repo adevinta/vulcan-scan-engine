@@ -155,13 +155,13 @@ func (c *ChecksRunner) CreateScanChecks(id string) error {
 	if *scan.CheckCount == checksCreated {
 		// Scans was already created.
 		level.Warn(c.l).Log("ScanAlreadyCreated", id)
-		return err
+		return nil
 	}
 
 	if scan.TargetGroups == nil || len(*scan.TargetGroups) == 0 {
 		// Scans with no target groups should not be RUNNING.
 		level.Warn(c.l).Log("ScanWithNoTargetGroups", id)
-		return err
+		return nil
 	}
 
 	// The checktypes info used to create the checks of a scan should be fixed
