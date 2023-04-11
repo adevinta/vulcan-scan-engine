@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/adevinta/errors v1.0.0
 	github.com/adevinta/vulcan-core-cli v1.0.1
-	github.com/adevinta/vulcan-metrics-client v1.0.0
+	github.com/adevinta/vulcan-metrics-client v1.0.1
 	github.com/aws/aws-sdk-go v1.44.98
 	github.com/go-kit/kit v0.9.0
 	github.com/go-kit/log v0.2.1
@@ -51,7 +51,7 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/subosito/gotenv v1.2.0 // indirect
 	golang.org/x/net v0.6.0 // indirect
-	golang.org/x/sys v0.5.0 // indirect
+	golang.org/x/sys v0.7.0 // indirect
 	golang.org/x/text v0.7.0 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	gopkg.in/fsnotify.v1 v1.4.7 // indirect
