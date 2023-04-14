@@ -5,9 +5,17 @@ updates:
   schedule:
     interval: daily
   open-pull-requests-limit: 10
-  allow:
-  - dependency-name: "*adevinta*"
+  labels:
+    - "dependencies"
+  commit-message:
+    prefix: "feat"
+    include: "scope"
 - package-ecosystem: "docker"
   directory: "/"
   schedule:
     interval: "weekly"
+  labels:
+    - "dependencies"
+  commit-message:
+    prefix: "feat"
+    include: "scope"
