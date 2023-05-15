@@ -15,7 +15,7 @@ COPY . .
 
 RUN cd cmd/vulcan-scan-engine/ && GOOS=linux GOARCH=$ARCH go build . && cd -
 
-FROM alpine:3.17.3
+FROM alpine:3.18.0
 
 WORKDIR /flyway
 
