@@ -2,7 +2,7 @@
 
 ARG ARCH=amd64
 
-FROM golang:1.19.3-alpine3.15 as builder
+FROM golang:1.19-alpine3.18 as builder
 
 WORKDIR /app
 
@@ -15,7 +15,7 @@ COPY . .
 
 RUN cd cmd/vulcan-scan-engine/ && GOOS=linux GOARCH=$ARCH go build . && cd -
 
-FROM alpine:3.17.3
+FROM alpine:3.18
 
 WORKDIR /flyway
 
