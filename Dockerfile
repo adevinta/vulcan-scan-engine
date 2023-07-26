@@ -1,19 +1,20 @@
+# syntax=docker/dockerfile:1.4
 # Copyright 2021 Adevinta
 
-ARG ARCH=amd64
-
-FROM golang:1.19-alpine3.18 as builder
+FROM --platform=$BUILDPLATFORM  golang:1.19-alpine3.18 as builder
 
 WORKDIR /app
 
-COPY go.mod .
-COPY go.sum .
+COPY go.mod go.sum ./
 
 RUN go mod download
 
 COPY . .
 
-RUN cd cmd/vulcan-scan-engine/ && GOOS=linux GOARCH=$ARCH go build . && cd -
+ARG TARGETOS TARGETARCH
+
+WORKDIR /app/cmd/vulcan-scan-engine
+RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build .
 
 FROM alpine:3.18
 
@@ -23,7 +24,7 @@ RUN apk add --no-cache --update openjdk8-jre-base bash gettext
 
 ARG FLYWAY_VERSION=9.19.3
 
-RUN wget https://repo1.maven.org/maven2/org/flywaydb/flyway-commandline/${FLYWAY_VERSION}/flyway-commandline-${FLYWAY_VERSION}.tar.gz \
+RUN wget -q https://repo1.maven.org/maven2/org/flywaydb/flyway-commandline/${FLYWAY_VERSION}/flyway-commandline-${FLYWAY_VERSION}.tar.gz \
     && tar -xzf flyway-commandline-${FLYWAY_VERSION}.tar.gz --strip 1 \
     && rm flyway-commandline-${FLYWAY_VERSION}.tar.gz \
     && find ./drivers/ -type f -not -name 'postgres*' -delete \
@@ -38,11 +39,10 @@ ARG COMMIT="local"
 ENV BUILD_RFC3339 "$BUILD_RFC3339"
 ENV COMMIT "$COMMIT"
 
-COPY db/*.sql /app/sql/
+COPY --link db/*.sql ./sql/
+COPY --link config.toml run.sh ./
 
-COPY --from=builder /app/cmd/vulcan-scan-engine/vulcan-scan-engine .
-
-COPY config.toml .
-COPY run.sh .
+COPY --from=builder --link /app/cmd/vulcan-scan-engine/vulcan-scan-engine .
 
 CMD [ "./run.sh" ]
+
