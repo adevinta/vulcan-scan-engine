@@ -4,6 +4,7 @@ env:
   global:
     - FLYWAY_VERSION=9.19.3
     - INPUT_BUILDARGS=FLYWAY_VERSION=$FLYWAY_VERSION
+    - INPUT_PLATFORM=linux/amd64  # ,linux/arm64
 go:
   - 1.18.x
 services:
@@ -17,4 +18,4 @@ script:
   - go test -short -v $(go list ./... | grep -v /vendor/)
   - cd cmd/vulcan-scan-engine && go build && cd ../..
 after_success:
-  - bash -c 'source <(curl -s https://raw.githubusercontent.com/adevinta/vulcan-cicd/master/docker.sh)'
+  - bash -c 'source <(curl -s https://raw.githubusercontent.com/adevinta/vulcan-cicd/master/buildx.sh)'
