@@ -1,0 +1,25 @@
+version: 2
+updates:
+- package-ecosystem: gomod
+  directory: "/"
+  schedule:
+    interval: daily
+  ignore:
+  - dependency-name: "github.com/goadesign/goa"
+    update-types: ["version-update:semver-minor", "version-update:semver-major"]
+  - dependency-name: "github.com/aws/aws-sdk-go"
+    update-types: ["version-update:semver-patch"]
+  labels:
+    - "dependencies"
+- package-ecosystem: "docker"
+  directory: "/"
+  schedule:
+    interval: "weekly"
+  labels:
+    - "dependencies"
+- package-ecosystem: "github-actions"
+  directory: "/"
+  schedule:
+    interval: "weekly"
+  labels:
+    - "dependencies"
