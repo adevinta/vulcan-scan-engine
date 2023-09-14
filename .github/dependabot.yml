@@ -1,9 +1,9 @@
 version: 2
 updates:
-- package-ecosystem: gomod
+- package-ecosystem: "gomod"
   directory: "/"
   schedule:
-    interval: daily
+    interval: "daily"
   ignore:
   - dependency-name: "github.com/aws/aws-sdk-go"
     update-types: ["version-update:semver-patch"]
