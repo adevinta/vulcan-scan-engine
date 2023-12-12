@@ -6,7 +6,7 @@ require (
 	github.com/adevinta/errors v1.0.0
 	github.com/adevinta/vulcan-core-cli v1.0.2
 	github.com/adevinta/vulcan-metrics-client v1.0.1
-	github.com/aws/aws-sdk-go v1.48.0
+	github.com/aws/aws-sdk-go v1.49.1
 	github.com/go-kit/kit v0.13.0
 	github.com/go-kit/log v0.2.1
 	github.com/goadesign/goa v1.4.3
