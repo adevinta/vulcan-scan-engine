@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.4
 # Copyright 2021 Adevinta
 
-FROM --platform=$BUILDPLATFORM  golang:1.21-alpine3.18 as builder
+FROM --platform=$BUILDPLATFORM  golang:1.22-alpine3.18 as builder
 
 WORKDIR /app
 
