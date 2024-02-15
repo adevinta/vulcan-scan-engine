@@ -11,7 +11,7 @@ require (
 	github.com/go-kit/log v0.2.1
 	github.com/goadesign/goa v1.4.3
 	github.com/google/go-cmp v0.6.0
-	github.com/gorilla/mux v1.8.0
+	github.com/gorilla/mux v1.8.1
 	github.com/jinzhu/gorm v1.9.16
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/lib/pq v1.10.9
