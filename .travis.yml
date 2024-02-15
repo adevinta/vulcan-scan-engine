@@ -6,7 +6,7 @@ env:
     - INPUT_BUILDARGS=FLYWAY_VERSION=$FLYWAY_VERSION
     - INPUT_PLATFORM=linux/amd64  # ,linux/arm64
 go:
-  - 1.18.x
+  - 1.21.x
 services:
   - docker
 before_script:
