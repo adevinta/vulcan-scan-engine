@@ -1,6 +1,8 @@
 module github.com/adevinta/vulcan-scan-engine
 
-go 1.18
+go 1.21.0
+
+toolchain go1.21.6
 
 require (
 	github.com/adevinta/errors v1.0.0
