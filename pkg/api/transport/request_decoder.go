@@ -32,9 +32,10 @@ func makeDecodeRequestFunc(req interface{}) kithttp.DecodeRequestFunc {
 // the fields using parameters taken from the request route path. For example:
 //
 // Given the request struct for finding teams by a user_id
-// type FindTeamsByUserJSONRequest struct {
-//	 UserID string `json:"user_id" urlvar:"user_id"`
-// }
+//
+//	type FindTeamsByUserJSONRequest struct {
+//		 UserID string `json:"user_id" urlvar:"user_id"`
+//	}
 //
 // The UserID will be loaded from the request route, in this case:
 // /v1/users/{user_id}/teams
