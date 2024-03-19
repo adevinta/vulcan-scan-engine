@@ -2,6 +2,8 @@
 
 # Copyright 2021 Adevinta
 
+set -e
+
 # export default values for required vars if not set
 export PORT=${PORT:-8080}
 export DOGSTATSD_ENABLED=${DOGSTATSD_ENABLED:-false}
@@ -12,7 +14,7 @@ export CHECKS_SQS_TIMEOUT=${CHECKS_SQS_TIMEOUT:-30}
 export CHECKS_CREATOR_CHECKPOINT=${CHECKS_CREATOR_CHECKPOINT:-100}
 export PERSISTENCE_CACHE=${PERSISTENCE_CACHE:-120}
 
-# Nessus section  will be deprecated, 
+# Nessus section  will be deprecated,
 # We add this for compatibility using the new dynamic method.
 export QUEUES_NESSUS_CHECKTYPES=${QUEUES_NESSUS_CHECKTYPES:-'[]'}
 
