@@ -19,7 +19,7 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/satori/go.uuid v1.2.1-0.20181028125025-b2ce2384e17b
 	github.com/spf13/cobra v1.8.0
-	github.com/spf13/viper v1.18.2
+	github.com/spf13/viper v1.19.0
 	gopkg.in/go-playground/validator.v9 v9.31.0
 	gopkg.in/testfixtures.v2 v2.6.0
 )
@@ -45,7 +45,7 @@ require (
 	github.com/mattn/go-oci8 v0.0.0-20191108001511-cbd8d5bc1da0 // indirect
 	github.com/mattn/go-sqlite3 v2.0.2+incompatible // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
-	github.com/pelletier/go-toml/v2 v2.1.0 // indirect
+	github.com/pelletier/go-toml/v2 v2.2.2 // indirect
 	github.com/sagikazarmark/locafero v0.4.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
