@@ -7,6 +7,8 @@ package scans
 import (
 	"encoding/json"
 	"errors"
+
+	"github.com/adevinta/vulcan-scan-engine/pkg/queue"
 )
 
 const defaultQueueName = "default"
@@ -25,17 +27,20 @@ type NamedQueuesSender interface {
 type JobsQueueSender struct {
 	sender      NamedQueuesSender
 	defCTQueues map[string]string
+	redisSender *queue.RedisProducer
 }
 
 // NewJobQueueSender creates a new JobQueueSender given the corresponder named
 // queues message sender and the default queue names for checktypes.
-func NewJobQueueSender(sender NamedQueuesSender, defaultCTQueues map[string]string) (*JobsQueueSender, error) {
+func NewJobQueueSender(sender NamedQueuesSender, defaultCTQueues map[string]string, redis *queue.RedisProducer) (*JobsQueueSender, error) {
 	if _, ok := defaultCTQueues[defaultQueueName]; !ok {
 		return nil, ErrNoDefaultQueueDefined
 	}
+
 	return &JobsQueueSender{
 		sender:      sender,
 		defCTQueues: defaultCTQueues,
+		redisSender: redis,
 	}, nil
 }
 
@@ -54,6 +59,10 @@ func (j *JobsQueueSender) Send(queueName string, checktypeName string, job Job) 
 	content, err := json.Marshal(job)
 	if err != nil {
 		return err
+	}
+
+	if j.redisSender != nil {
+		j.redisSender.SendMessage(checktypeName, content)
 	}
 	return j.sender.Send(queueName, string(content))
 }

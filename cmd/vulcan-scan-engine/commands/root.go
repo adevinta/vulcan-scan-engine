@@ -166,12 +166,13 @@ func startServer() error {
 	)
 
 	streamClient := stream.NewClient(cfg.Stream.URL)
+	redisProducer := queue.NewRedisProducer(cfg.Redis, logger)
 
 	producer, err := queue.NewMultiSQSProducer(cfg.CTQueues.ARNs(), cfg.SQS.Endpoint, logger)
 	if err != nil {
 		return err
 	}
-	jobsSender, err := scans.NewJobQueueSender(producer, cfg.CTQueues.Names())
+	jobsSender, err := scans.NewJobQueueSender(producer, cfg.CTQueues.Names(), redisProducer)
 	if err != nil {
 		return err
 	}

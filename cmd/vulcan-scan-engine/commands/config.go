@@ -91,6 +91,7 @@ type config struct {
 	DB            dbConfig
 	Vulcan        checktypesInformer
 	SQS           queue.Config
+	Redis         queue.RedisConfig
 	ScansSNS      notify.Config `mapstructure:"scans_sns"`
 	ChecksSNS     notify.Config `mapstructure:"checks_sns"`
 	Metrics       metricsConfig
