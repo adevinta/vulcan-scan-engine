@@ -24,6 +24,13 @@ timeout = $CHECKS_SQS_TIMEOUT
 queue_arn = "$CHECKS_SQS_ARN"
 endpoint = "$AWS_SQS_ENDPOINT"
 
+[redis]
+Host = "$REDIS_HOST"
+Port = $REDIS_PORT
+Usr = "$REDIS_USR"
+Pwd = "$REDIS_PWD"
+DB = $REDIS_DB
+
 [scans_sns]
 topic_arn = "$SCANS_SNS_ARN"
 endpoint = "$AWS_SNS_ENDPOINT"
