@@ -10,6 +10,7 @@ import (
 )
 
 const defaultQueueName = "default"
+const prefixQueueName = "prefix"
 
 // ErrNoDefaultQueueDefined is returned when the initial default queues
 // configuration does not contain a entry with the key "default".
@@ -33,6 +34,7 @@ func NewJobQueueSender(sender NamedQueuesSender, defaultCTQueues map[string]stri
 	if _, ok := defaultCTQueues[defaultQueueName]; !ok {
 		return nil, ErrNoDefaultQueueDefined
 	}
+
 	return &JobsQueueSender{
 		sender:      sender,
 		defCTQueues: defaultCTQueues,
@@ -55,5 +57,14 @@ func (j *JobsQueueSender) Send(queueName string, checktypeName string, job Job) 
 	if err != nil {
 		return err
 	}
-	return j.sender.Send(queueName, string(content))
+
+	if err = j.sender.Send(queueName, string(content)); err != nil {
+		return err
+	}
+
+	if x, ok := j.defCTQueues[prefixQueueName]; ok {
+		return j.sender.Send(x, string(content))
+	}
+
+	return nil
 }
