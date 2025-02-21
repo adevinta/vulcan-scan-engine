@@ -48,6 +48,10 @@ checkpoint = $CHECKS_CREATOR_CHECKPOINT
 
 [queues]
 
+    # Optional in case you want to send messages to a per check queue.
+    [queues.prefix]
+    arn = "$QUEUES_PREFIX_ARN"
+
     [queues.default]
     arn = "$QUEUES_DEFAULT_ARN"
 
@@ -64,3 +68,4 @@ checkpoint = $CHECKS_CREATOR_CHECKPOINT
     # [queues.q2]
     # arn = "$QUEUES_2_ARN"
     # checktypes = $QUEUES_2_CHECKTYPES
+
