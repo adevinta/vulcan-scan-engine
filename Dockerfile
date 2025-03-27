@@ -1,7 +1,6 @@
-# syntax=docker/dockerfile:1.4
 # Copyright 2021 Adevinta
 
-FROM --platform=$BUILDPLATFORM  golang:1.23-alpine3.19 as builder
+FROM --platform=linux/$TARGETARCH golang:1.24-alpine AS builder
 
 WORKDIR /app
 
@@ -32,12 +31,6 @@ RUN wget -q https://repo1.maven.org/maven2/org/flywaydb/flyway-commandline/${FLY
     && ln -s /flyway/flyway /bin/flyway
 
 WORKDIR /app
-
-ARG BUILD_RFC3339="1970-01-01T00:00:00Z"
-ARG COMMIT="local"
-
-ENV BUILD_RFC3339 "$BUILD_RFC3339"
-ENV COMMIT "$COMMIT"
 
 COPY --link db/*.sql ./sql/
 COPY --link config.toml run.sh ./

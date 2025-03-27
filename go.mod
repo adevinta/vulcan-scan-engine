@@ -1,6 +1,7 @@
 module github.com/adevinta/vulcan-scan-engine
 
-go 1.21.0
+go 1.23.0
+
 toolchain go1.24.1
 
 require (
