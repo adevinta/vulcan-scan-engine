@@ -9,8 +9,8 @@ github.com/Microsoft/go-winio v0.5.2/go.mod h1:WpS1mjBmmwHBEWmogvA2mj8546UReBk4v
 github.com/PuerkitoBio/goquery v1.5.1/go.mod h1:GsLWisAFVj4WgDibEWF4pvYnkVQBpKBKeU+7zCJoLcc=
 github.com/adevinta/errors v1.0.0 h1:AWSk4/FPscfTUWSV7tw5Gj5+9pjvDLF/+rhv97dSRPU=
 github.com/adevinta/errors v1.0.0/go.mod h1:wzlA5WqVWJnAbHve26Io48+aAvmKLWDPBprJPWeuZNI=
-github.com/adevinta/vulcan-core-cli v1.0.2 h1:HrwMZTGddiJ4difC+RdRv0J6escwkx3bk88y48/TOtQ=
-github.com/adevinta/vulcan-core-cli v1.0.2/go.mod h1:DBiZc/kZ4dKAjWQV5RZ5QVtkKRce81sKwy6XbFj/s7U=
+github.com/adevinta/vulcan-core-cli v1.0.3 h1:GSydLWv94xUTi0Y0oJXP8GtKyGWAnlR0vEtvb55/z8c=
+github.com/adevinta/vulcan-core-cli v1.0.3/go.mod h1:QgGAWJkyVXSzDAN+3G3tB9JyaocRKbm2gxpKmg1wa8k=
 github.com/adevinta/vulcan-metrics-client v1.0.1 h1:BAugnnRWvkA3vnuCX77W04PWhneZyenkrXtf9YgtZQk=
 github.com/adevinta/vulcan-metrics-client v1.0.1/go.mod h1:we8vxfPMYQqZtOy42PJxsWwv2DwruSaT/wwNMxkum8I=
 github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc/go.mod h1:LOuyumcjzFXgccqObfd/Ljyb9UuFJ6TxHnclSeseNhc=
