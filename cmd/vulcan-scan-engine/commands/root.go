@@ -18,11 +18,11 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	goaclient "github.com/goadesign/goa/client"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/adevinta/vulcan-core-cli/vulcan-core/client"
+	"github.com/adevinta/vulcan-scan-engine/pkg/checktypes"
+
 	metrics "github.com/adevinta/vulcan-metrics-client"
 
 	"github.com/adevinta/vulcan-scan-engine/pkg/api/endpoint"
@@ -300,19 +300,9 @@ func addLoggingMiddleware(endpoints *endpoint.Endpoints, logger log.Logger) {
 	endpoints.AbortScan = withLog(endpoints.AbortScan)
 }
 
-func newVulcanCoreAPIClient(config checktypesInformer) *client.Client {
-	httpClient := newHTTPClient()
-	c := client.New(goaclient.HTTPClientDoer(httpClient))
-	c.Client.Scheme = config.Schema
-	c.Client.Host = config.Host
+func newVulcanCoreAPIClient(config checktypesInformer) *checktypes.Client {
+	c := checktypes.New(config.URL)
 	return c
-}
-
-func newHTTPClient() *http.Client {
-	// By now the only way to ensure that every time we make a request
-	// to the core we use dns load balancing it's to disable keep alive.
-	tr := &http.Transport{DisableKeepAlives: true}
-	return &http.Client{Transport: tr}
 }
 
 func logWithConfig(cfg logConfig, l log.Logger) (log.Logger, error) {

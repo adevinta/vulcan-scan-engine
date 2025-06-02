@@ -10,9 +10,8 @@ connection_string = "host=$PG_HOST port=$PG_PORT user=$PG_USER dbname=$PG_NAME p
 migrations_subdir = ""
 
 [vulcan]
-schema = "http"
-host = "$PERSISTENCE_HOST"
 cache = "$PERSISTENCE_CACHE"
+url = "$CHECKTYPES_URL"
 
 [sqs]
 disabled = false

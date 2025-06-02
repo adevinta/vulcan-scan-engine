@@ -21,10 +21,10 @@ import (
 
 	"github.com/adevinta/errors"
 
-	"github.com/adevinta/vulcan-core-cli/vulcan-core/client"
 	metrics "github.com/adevinta/vulcan-metrics-client"
 	"github.com/adevinta/vulcan-scan-engine/pkg/api"
 	"github.com/adevinta/vulcan-scan-engine/pkg/api/persistence"
+	"github.com/adevinta/vulcan-scan-engine/pkg/checktypes"
 	"github.com/adevinta/vulcan-scan-engine/pkg/notify"
 	"github.com/adevinta/vulcan-scan-engine/pkg/stream"
 	"github.com/adevinta/vulcan-scan-engine/pkg/util"
@@ -54,7 +54,7 @@ const (
 // ChecktypesInformer represents an informer for the mapping
 // between checktypes and supported asset types.
 type ChecktypesInformer interface {
-	GetAssettypes() (*client.AssettypeCollection, error)
+	GetAssettypes() (*checktypes.AssettypeCollection, error)
 }
 
 // ChecksCreator abstracts the actual implementation
@@ -245,7 +245,7 @@ func (s ScansService) CreateScan(ctx context.Context, scan *api.Scan) (uuid.UUID
 	return id, nil
 }
 
-func (s ScansService) getScanStats(ctx context.Context, checktypesInfo api.ChecktypesByAssettypes, scan *api.Scan) (scanStats, error) {
+func (s ScansService) getScanStats(_ context.Context, checktypesInfo api.ChecktypesByAssettypes, scan *api.Scan) (scanStats, error) {
 	stats := scanStats{
 		NumberOfChecksPerChecktype: map[string]int{},
 	}
@@ -278,21 +278,21 @@ func (s ScansService) getScanStats(ctx context.Context, checktypesInfo api.Check
 	return stats, nil
 }
 
-func (s ScansService) checktypesByAssettype(ctx context.Context) (api.ChecktypesByAssettypes, error) {
+func (s ScansService) checktypesByAssettype(_ context.Context) (api.ChecktypesByAssettypes, error) {
 	assettypes, err := s.ctInformer.GetAssettypes()
 	if err != nil {
 		return nil, err
 	}
 	ret := api.ChecktypesByAssettypes{}
 	for _, a := range *assettypes {
-		if a.Assettype == nil {
+		if a.Assettype == "" {
 			continue
 		}
-		if _, ok := ret[*a.Assettype]; !ok {
-			ret[*a.Assettype] = map[string]struct{}{}
+		if _, ok := ret[a.Assettype]; !ok {
+			ret[a.Assettype] = map[string]struct{}{}
 		}
 		for _, c := range a.Name {
-			ret[*a.Assettype][c] = struct{}{}
+			ret[a.Assettype][c] = struct{}{}
 		}
 	}
 	return ret, nil
@@ -361,9 +361,6 @@ func (s ScansService) ProcessScanCheckNotification(ctx context.Context, msg []by
 	// As a check message does not contain all the information
 	// of a check we must merge with the the info of the check in the DB.
 	check := mergeChecks(dbCheck, checkMssg)
-	if err != nil {
-		return err
-	}
 	s.pushCheckMetrics(check)
 	err = s.notifyCheck(check)
 	if err != nil {

@@ -14,10 +14,10 @@ import (
 	"github.com/go-kit/log/level"
 	uuid "github.com/satori/go.uuid"
 
-	"github.com/adevinta/vulcan-core-cli/vulcan-core/client"
 	"github.com/adevinta/vulcan-scan-engine/pkg/api"
 	"github.com/adevinta/vulcan-scan-engine/pkg/api/persistence/db"
 	"github.com/adevinta/vulcan-scan-engine/pkg/api/service"
+	"github.com/adevinta/vulcan-scan-engine/pkg/checktypes"
 	"github.com/adevinta/vulcan-scan-engine/pkg/util"
 )
 
@@ -40,7 +40,7 @@ type JobSender interface {
 // ChecktypeInformer defines the services required by the JobCreator type to be
 // able to query information about checktypes.
 type ChecktypeInformer interface {
-	GetChecktype(name string) (*client.Checktype, error)
+	GetChecktype(name string) (*checktypes.Checktype, error)
 }
 
 // Store defines the methods required by the check creator to query and update
@@ -335,20 +335,16 @@ func (c *ChecksRunner) createCheck(scan api.Scan, g api.TargetsChecktypesGroup, 
 	}
 	optsC := options
 	optsCT := ""
-	if ctInfo.Checktype.Options != nil {
-		optsCT = *ctInfo.Checktype.Options
+	if ctInfo.Options != nil && len(ctInfo.Options) > 0 {
+		optsCT = mustMapToString(ctInfo.Options)
 	}
 	opts, err := deepMergeJsons(optsCT, optsC)
 	if err != nil {
 		return api.Check{}, err
 	}
-	queue := ""
-	if ctInfo.Checktype.QueueName != nil {
-		queue = *ctInfo.Checktype.QueueName
-	}
 	now := time.Now()
 	progress := float32(0.0)
-	checktypeID := ctInfo.Checktype.ID.String()
+	checktypeID := ctInfo.ID.String()
 	check := api.Check{
 		ID:            id.String(),
 		Status:        api.CheckStateCreated,
@@ -359,19 +355,19 @@ func (c *ChecksRunner) createCheck(scan api.Scan, g api.TargetsChecktypesGroup, 
 		AgentID:       nil,
 		ChecktypeID:   &checktypeID,
 		ChecktypeName: &name,
-		Image:         &ctInfo.Checktype.Image,
+		Image:         &ctInfo.Image,
 		Options:       &opts,
 		WebHook:       nil,
 		Report:        nil,
 		Raw:           nil,
-		QueueName:     &queue,
+		QueueName:     &ctInfo.QueueName,
 		Tag:           &t,
 		Assettype:     &assetType,
 		Metadata:      &meta,
-		RequiredVars:  &ctInfo.Checktype.RequiredVars,
+		RequiredVars:  &ctInfo.RequiredVars,
 		CreatedAt:     &now,
 		UpdatedAt:     &now,
-		Timeout:       ctInfo.Checktype.Timeout,
+		Timeout:       &ctInfo.Timeout,
 		// This field Data must be deprecated in future versions.
 		Data: []byte("{}"),
 	}
@@ -517,4 +513,15 @@ func buildOptionsForCheck(checktypeOpts, targetGroupOpts, targetOpts string) (st
 		return "", err
 	}
 	return string(content), nil
+}
+
+func mustMapToString(m map[string]any) string {
+	if m == nil {
+		return "{}"
+	}
+	content, err := json.Marshal(m)
+	if err != nil {
+		panic(err)
+	}
+	return string(content)
 }

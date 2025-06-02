@@ -18,10 +18,10 @@ import (
 	uuid "github.com/satori/go.uuid"
 
 	"github.com/adevinta/errors"
-	"github.com/adevinta/vulcan-core-cli/vulcan-core/client"
 	metrics "github.com/adevinta/vulcan-metrics-client"
 	"github.com/adevinta/vulcan-scan-engine/pkg/api"
 	"github.com/adevinta/vulcan-scan-engine/pkg/api/persistence"
+	"github.com/adevinta/vulcan-scan-engine/pkg/checktypes"
 	"github.com/adevinta/vulcan-scan-engine/pkg/stream"
 )
 
@@ -98,10 +98,10 @@ func (f fakeScansPersistence) GetScanStatus(ID uuid.UUID) (api.Scan, error) {
 }
 
 type inMemoryAssettypeInformer struct {
-	assetypes client.AssettypeCollection
+	assetypes checktypes.AssettypeCollection
 }
 
-func (i *inMemoryAssettypeInformer) GetAssettypes() (*client.AssettypeCollection, error) {
+func (i *inMemoryAssettypeInformer) GetAssettypes() (*checktypes.AssettypeCollection, error) {
 	return &i.assetypes, nil
 }
 
@@ -220,27 +220,27 @@ func TestScansService_CreateScan(t *testing.T) {
 				logger:        log.NewLogfmtLogger(os.Stdout),
 				metricsClient: &mockMetricsClient{},
 				checktypesInformer: &inMemoryAssettypeInformer{
-					assetypes: client.AssettypeCollection{
-						&client.Assettype{
-							Assettype: nil,
+					assetypes: checktypes.AssettypeCollection{
+						checktypes.Assettype{
+							Assettype: "",
 							Name: []string{
 								"vulcan-no-exec",
 							},
 						},
-						&client.Assettype{
-							Assettype: strToPtr("Hostname"),
+						checktypes.Assettype{
+							Assettype: "Hostname",
 							Name: []string{
 								"vulcan-nessus",
 							},
 						},
-						&client.Assettype{
-							Assettype: strToPtr("DomainName"),
+						checktypes.Assettype{
+							Assettype: "DomainName",
 							Name: []string{
 								"vulcan-spf",
 							},
 						},
-						&client.Assettype{
-							Assettype: strToPtr("IP"),
+						checktypes.Assettype{
+							Assettype: "IP",
 							Name:      []string{},
 						},
 					},
@@ -519,8 +519,4 @@ func intToPtr(in int) *int {
 
 func floatToPtr(in float32) *float32 {
 	return &in
-}
-
-func strToPtr(input string) *string {
-	return &input
 }

@@ -16,13 +16,11 @@ import (
 	"github.com/adevinta/vulcan-scan-engine/pkg/api"
 	"github.com/adevinta/vulcan-scan-engine/pkg/api/persistence/db"
 	"github.com/adevinta/vulcan-scan-engine/pkg/api/service"
+	"github.com/adevinta/vulcan-scan-engine/pkg/checktypes"
 	"github.com/go-kit/log"
-	uuid2 "github.com/goadesign/goa/uuid"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	uuid "github.com/satori/go.uuid"
-
-	"github.com/adevinta/vulcan-core-cli/vulcan-core/client"
 )
 
 var (
@@ -46,43 +44,34 @@ var (
 		return out
 	})
 
-	checktypes = map[string]client.Checktype{
+	cts = map[string]checktypes.Checktype{
 		"vulcan-http-headers": {
-			Checktype: &client.ChecktypeType{
-				ID:           mustUUID2FromString("09aac496-5f5d-443e-bd0b-6c42e0a05ee1"),
-				Assets:       []string{"Hostname"},
-				Name:         "vulcan-http-headers",
-				Image:        "example.com/vulcan-checks/vulcan-http-headers:285",
-				Enabled:      boolToPtr(true),
-				RequiredVars: []string{"VAR1", "VAR2"},
-				QueueName:    strToPtr("queue1"),
-				Timeout:      intToPtr(700),
-				Options:      strToPtr("{}"),
-			},
+			Assets:       []string{"Hostname"},
+			Name:         "vulcan-http-headers",
+			Image:        "example.com/vulcan-checks/vulcan-http-headers:285",
+			Enabled:      true,
+			RequiredVars: []string{"VAR1", "VAR2"},
+			QueueName:    "queue1",
+			Timeout:      700,
+			Options:      nil,
 		},
 		"vulcan-nessus": {
-			Checktype: &client.ChecktypeType{
-				ID:           mustUUID2FromString("8f8727fe-55bc-11eb-ae93-0242ac130002"),
-				Assets:       []string{"Hostname"},
-				Name:         "vulcan-nessus",
-				Image:        "example.com/vulcan-checks/vulcan-nessus:2",
-				Enabled:      boolToPtr(true),
-				RequiredVars: []string{"VAR1"},
-				QueueName:    strToPtr("queue2"),
-				Timeout:      intToPtr(100),
-				Options:      strToPtr("{\"option\":1}"),
-			},
+			Assets:       []string{"Hostname"},
+			Name:         "vulcan-nessus",
+			Image:        "example.com/vulcan-checks/vulcan-nessus:2",
+			Enabled:      true,
+			RequiredVars: []string{"VAR1"},
+			QueueName:    "queue2",
+			Timeout:      100,
+			Options:      map[string]any{"option": 1},
 		},
 		"vulcan-docker": {
-			Checktype: &client.ChecktypeType{
-				ID:           mustUUID2FromString("8f8727fe-55bc-11eb-ae93-0242ac130002"),
-				Assets:       []string{"Hostname"},
-				Name:         "vulcan-docker",
-				Image:        "example.com/vulcan-checks/vulcan-docker:1",
-				Enabled:      boolToPtr(true),
-				RequiredVars: []string{},
-				Timeout:      intToPtr(100),
-			},
+			Assets:       []string{"Hostname"},
+			Name:         "vulcan-docker",
+			Image:        "example.com/vulcan-checks/vulcan-docker:1",
+			Enabled:      true,
+			RequiredVars: []string{},
+			Timeout:      100,
 		},
 	}
 
@@ -155,7 +144,6 @@ var (
 			Target:        "host1.example.com",
 			Progress:      floatToPtr(0),
 			ScanIndex:     strToPtr("0_0"),
-			ChecktypeID:   strToPtr("09aac496-5f5d-443e-bd0b-6c42e0a05ee1"),
 			ChecktypeName: strToPtr("vulcan-http-headers"),
 			Image:         strToPtr("example.com/vulcan-checks/vulcan-http-headers:285"),
 			Options:       strToPtr("{}"),
@@ -173,7 +161,6 @@ var (
 			Target:        "host1.example.com",
 			Progress:      floatToPtr(0),
 			ScanIndex:     strToPtr("0_1"),
-			ChecktypeID:   strToPtr("8f8727fe-55bc-11eb-ae93-0242ac130002"),
 			ChecktypeName: strToPtr("vulcan-nessus"),
 			Image:         strToPtr("example.com/vulcan-checks/vulcan-nessus:2"),
 			Options:       strToPtr(`{"option":1}`),
@@ -191,7 +178,6 @@ var (
 			Target:        "192.168.0.1",
 			Progress:      floatToPtr(0),
 			ScanIndex:     strToPtr("1_0"),
-			ChecktypeID:   strToPtr("8f8727fe-55bc-11eb-ae93-0242ac130002"),
 			ChecktypeName: strToPtr("vulcan-docker"),
 			Image:         strToPtr("example.com/vulcan-checks/vulcan-docker:1"),
 			Options:       strToPtr("{}"),
@@ -210,16 +196,16 @@ var (
 
 				CheckID:       "ad11932b-e68f-48a9-bfab-5789a8aa20e8",
 				AssetType:     "Hostname",
-				Image:         checktypes["vulcan-http-headers"].Checktype.Image,
+				Image:         cts["vulcan-http-headers"].Image,
 				ScanID:        scan4ID,
 				Target:        "host1.example.com",
 				ScanStartTime: time.Now(),
-				Timeout:       *checktypes["vulcan-http-headers"].Checktype.Timeout,
-				Options:       *checktypes["vulcan-http-headers"].Checktype.Options,
+				Timeout:       cts["vulcan-http-headers"].Timeout,
+				Options:       mustMapToString(cts["vulcan-http-headers"].Options),
 				Metadata:      map[string]string{"program": "scan4Program", "team": "5a1346f1"},
-				RequiredVars:  checktypes["vulcan-http-headers"].Checktype.RequiredVars,
+				RequiredVars:  cts["vulcan-http-headers"].RequiredVars,
 			},
-			Queue:         *checktypes["vulcan-http-headers"].Checktype.QueueName,
+			Queue:         cts["vulcan-http-headers"].QueueName,
 			ChecktypeName: "vulcan-http-headers",
 		},
 		{
@@ -256,10 +242,10 @@ var (
 )
 
 type inMemChecktypesInformer struct {
-	Checktypes map[string]client.Checktype
+	Checktypes map[string]checktypes.Checktype
 }
 
-func (i inMemChecktypesInformer) GetChecktype(name string) (*client.Checktype, error) {
+func (i inMemChecktypesInformer) GetChecktype(name string) (*checktypes.Checktype, error) {
 	checktype, ok := i.Checktypes[name]
 	if !ok {
 		return nil, nil
@@ -328,7 +314,7 @@ func TestChecksRunner_CreateScanChecks(t *testing.T) {
 				},
 				listener: &inMemChecksListener{},
 				pclient: inMemChecktypesInformer{
-					Checktypes: checktypes,
+					Checktypes: cts,
 				},
 				sender:     &inMemJobsSender{},
 				checkpoint: 2,
@@ -354,7 +340,7 @@ func TestChecksRunner_CreateScanChecks(t *testing.T) {
 					gotChecks = append(gotChecks, c)
 				}
 				wantChecks := scan4Checks
-				checksDiff := cmp.Diff(wantChecks, gotChecks, ChecksTrans, cmpopts.IgnoreFields(api.Check{}, "ID", "CreatedAt", "UpdatedAt", "Data"))
+				checksDiff := cmp.Diff(wantChecks, gotChecks, ChecksTrans, cmpopts.IgnoreFields(api.Check{}, "ID", "CreatedAt", "UpdatedAt", "Data", "ChecktypeID"))
 				if checksDiff != "" {
 					t.Fatalf("stored checks, want!=got, diff:%s", checksDiff)
 				}
@@ -362,7 +348,7 @@ func TestChecksRunner_CreateScanChecks(t *testing.T) {
 				gotChecks = []api.Check{}
 				gotChecks = append(gotChecks, listenerStore.checks...)
 				wantChecksUpdated := scan4Checks
-				checksUpdatedDiff := cmp.Diff(wantChecksUpdated, gotChecks, ChecksTrans, cmpopts.IgnoreFields(api.Check{}, "ID", "CreatedAt", "UpdatedAt", "Data"))
+				checksUpdatedDiff := cmp.Diff(wantChecksUpdated, gotChecks, ChecksTrans, cmpopts.IgnoreFields(api.Check{}, "ID", "CreatedAt", "UpdatedAt", "Data", "ChecktypeID"))
 				if checksUpdatedDiff != "" {
 					t.Fatalf("send updated checks to listener, want!=got, diff:%s", checksUpdatedDiff)
 				}
@@ -493,14 +479,6 @@ func (s *inMemoryStore) InsertCheckIfNotExists(c api.Check) (string, error) {
 	return found.ID, nil
 }
 
-func mustUUID2FromString(id string) uuid2.UUID {
-	u, err := uuid2.FromString(id)
-	if err != nil {
-		panic(err)
-	}
-	return u
-}
-
 func mustUUIDFromString(id string) uuid.UUID {
 	u, err := uuid.FromString(id)
 	if err != nil {
@@ -523,10 +501,6 @@ func strToPtr(s string) *string {
 
 func timeToPtr(t time.Time) *time.Time {
 	return &t
-}
-
-func boolToPtr(val bool) *bool {
-	return &val
 }
 
 func mergeScans(scan1 api.Scan, scan2 api.Scan) api.Scan {

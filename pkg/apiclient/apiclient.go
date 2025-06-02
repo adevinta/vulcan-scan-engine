@@ -9,7 +9,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/adevinta/vulcan-core-cli/vulcan-core/client"
+	"github.com/adevinta/vulcan-scan-engine/pkg/checktypes"
 	"github.com/adevinta/vulcan-scan-engine/pkg/util"
 )
 
@@ -17,11 +17,11 @@ var errChecktypeNotFound = errors.New("checktype no found")
 
 type CachedAPIClient struct {
 	cache  *util.Cache
-	client *client.Client
+	client *checktypes.Client
 }
 
 // NewCachedAPIClient creates an api client that caches the results for indicated expiration.
-func NewCachedAPIClient(api *client.Client, expiration time.Duration) *CachedAPIClient {
+func NewCachedAPIClient(api *checktypes.Client, expiration time.Duration) *CachedAPIClient {
 	c := util.NewCache(expiration)
 	return &CachedAPIClient{
 		client: api,
@@ -30,43 +30,33 @@ func NewCachedAPIClient(api *client.Client, expiration time.Duration) *CachedAPI
 }
 
 // GetChecktype retrieves the checktype with the indicated name.
-func (s *CachedAPIClient) GetChecktype(name string) (*client.Checktype, error) {
-	enabled := "true"
-
+func (s *CachedAPIClient) GetChecktype(name string) (*checktypes.Checktype, error) {
 	if x, found := s.cache.Get(name); found {
-		return x.(*client.Checktype), nil
+		return x.(*checktypes.Checktype), nil
 	}
-	resp, err := s.client.IndexChecktypes(context.Background(), client.IndexChecktypesPath(), &enabled, &name)
+	resp, err := s.client.GetChecktype(context.Background(), name)
 	if err != nil {
 		return nil, err
 	}
-	ct, err := s.client.DecodeChecktype(resp)
-	if err != nil {
-		return nil, err
-	}
-	if ct == nil {
+	if resp == nil {
 		return nil, errChecktypeNotFound
 	}
-	s.cache.Set(name, ct)
-	return ct, err
+	s.cache.Set(name, resp)
+	return resp, err
 }
 
 const assettypeKey = "assettypeskey"
 
 // GetAssettypes retrieves the list of assettypes with the associated checktypes.
-func (s *CachedAPIClient) GetAssettypes() (*client.AssettypeCollection, error) {
+func (s *CachedAPIClient) GetAssettypes() (*checktypes.AssettypeCollection, error) {
 	if x, found := s.cache.Get(assettypeKey); found {
-		return x.(*client.AssettypeCollection), nil
+		return x.(*checktypes.AssettypeCollection), nil
 	}
 
-	resp, err := s.client.IndexAssettypes(context.Background(), client.IndexAssettypesPath())
+	resp, err := s.client.GetAssettypes(context.Background())
 	if err != nil {
 		return nil, err
 	}
-	assettypes, err := s.client.DecodeAssettypeCollection(resp)
-	if err != nil {
-		return nil, err
-	}
-	s.cache.Set(assettypeKey, &assettypes)
-	return &assettypes, err
+	s.cache.Set(assettypeKey, &resp)
+	return &resp, err
 }
