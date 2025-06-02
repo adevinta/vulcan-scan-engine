@@ -14,7 +14,7 @@ ARG TARGETOS TARGETARCH
 
 RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build ./cmd/vulcan-scan-engine
 
-FROM alpine:3.21
+FROM alpine:3.22
 
 WORKDIR /flyway
 
